@@ -139,9 +139,9 @@
 
                 <!-- Status Indicator & Quick Action -->
                 <div class="flex items-center space-x-3">
-                    <div id="api-status-badge" class="flex items-center text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                        <span class="w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
-                        <span id="api-status-text">示範模式 (無 Key)</span>
+                    <div id="api-status-badge" class="flex items-center text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                        <span id="api-status-text">已連線預設 Gemini API</span>
                     </div>
                     <button onclick="loadSampleEssay()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-1.5 rounded-lg border border-slate-300 transition">
                         <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-1"></i>載入範例作文
@@ -507,8 +507,8 @@
                     <!-- API Key Configuration -->
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">Gemini API Key</label>
-                        <input type="password" id="setting-api-key" placeholder="貼上您的 Gemini API Key (例如：AIzaSy...)" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-none">
-                        <p class="text-xs text-slate-400 mt-1">若留空，系統會以預設的智慧 Mock 模式運行，供功能演示體驗。</p>
+                        <input type="password" id="setting-api-key" placeholder="使用系統預設 API Key (或在此貼上您的專用 Key)" class="w-full text-sm px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                        <p class="text-xs text-slate-400 mt-1">若留空，系統會自動使用預設的 Gemini API Key 進行連線處理。</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -552,6 +552,18 @@
 
     <!-- JavaScript Application Logic -->
     <script>
+        // DEFAULT EMBEDDED API KEY
+        const DEFAULT_API_KEY = "AIzaSyDu2fzwAJpuQRzioV6-7zd-o8jRiPbYAPk";
+
+        // Helper to get active API key
+        function getActiveApiKey() {
+            const savedKey = localStorage.getItem('essay_api_key');
+            if (savedKey && savedKey.trim() !== '') {
+                return savedKey.trim();
+            }
+            return DEFAULT_API_KEY;
+        }
+
         // --- GLOBAL STATE MANAGEMENT ---
         let currentReportData = null;
         let radarChartInstance = null;
@@ -639,18 +651,17 @@
         }
 
         function updateApiStatusBadge() {
-            const key = localStorage.getItem('essay_api_key');
+            const customKey = localStorage.getItem('essay_api_key');
             const badge = document.getElementById('api-status-badge');
             const text = document.getElementById('api-status-text');
 
-            if (key) {
-                badge.className = "flex items-center text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
-                badge.querySelector('span').className = "w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse";
-                text.innerText = "已連線 Gemini API";
+            badge.className = "flex items-center text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+            badge.querySelector('span').className = "w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse";
+
+            if (customKey && customKey.trim() !== '') {
+                text.innerText = "已連線自訂 Gemini API";
             } else {
-                badge.className = "flex items-center text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200";
-                badge.querySelector('span').className = "w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-pulse";
-                text.innerText = "示範模式 (無 Key)";
+                text.innerText = "已連線預設 Gemini API";
             }
         }
 
@@ -686,17 +697,7 @@
                 document.getElementById('ocr-filename').innerText = file.name;
                 document.getElementById('ocr-preview-container').classList.remove('hidden');
 
-                // Simulate or invoke Gemini Multimodal OCR
-                const apiKey = localStorage.getItem('essay_api_key');
-                if (apiKey) {
-                    performRealGeminiOCR(e.target.result.split(',')[1], file.type);
-                } else {
-                    // Simulated OCR extraction text
-                    setTimeout(() => {
-                        document.getElementById('input-essay').value = `[OCR 自動辨識結果]\n再一個晴朗的早晨，我和家人一起去花蓮旅遊。那天陽光普照，藍天白雲，讓人心情非常舒暢...`;
-                        document.getElementById('char-count').innerText = `字數：${document.getElementById('input-essay').value.length} 字`;
-                    }, 1000);
-                }
+                performRealGeminiOCR(e.target.result.split(',')[1], file.type);
             };
             reader.readAsDataURL(file);
         }
@@ -707,7 +708,7 @@
         }
 
         async function performRealGeminiOCR(base64Data, mimeType) {
-            const apiKey = localStorage.getItem('essay_api_key');
+            const apiKey = getActiveApiKey();
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
             try {
@@ -751,19 +752,12 @@
             document.getElementById('report-container').classList.add('hidden');
             document.getElementById('report-loading').classList.remove('hidden');
 
-            const apiKey = localStorage.getItem('essay_api_key');
             let resultData = null;
 
-            if (apiKey) {
-                try {
-                    resultData = await callGeminiApiForCorrection(studentName, grade, title, essayText);
-                } catch (err) {
-                    console.warn("API Error, falling back to mock generator:", err);
-                    resultData = generateMockReportData(studentName, grade, title, essayText);
-                }
-            } else {
-                // Simulate delay for mock mode
-                await new Promise(r => setTimeout(r, 1200));
+            try {
+                resultData = await callGeminiApiForCorrection(studentName, grade, title, essayText);
+            } catch (err) {
+                console.warn("API Error, falling back to mock generator:", err);
                 resultData = generateMockReportData(studentName, grade, title, essayText);
             }
 
@@ -787,7 +781,7 @@
 
         // --- REAL GEMINI API CALL ---
         async function callGeminiApiForCorrection(studentName, grade, title, essayText) {
-            const apiKey = localStorage.getItem('essay_api_key');
+            const apiKey = getActiveApiKey();
             const model = localStorage.getItem('essay_model') || 'gemini-3-flash-preview';
             const customPrompt = localStorage.getItem('essay_prompt') || DEFAULT_PROMPT;
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -1102,15 +1096,9 @@
                 statusSpan.innerText = "AI 批改中...";
 
                 let report = null;
-                const apiKey = localStorage.getItem('essay_api_key');
-                if (apiKey) {
-                    try {
-                        report = await callGeminiApiForCorrection(student, grade, title, essay);
-                    } catch (e) {
-                        report = generateMockReportData(student, grade, title, essay);
-                    }
-                } else {
-                    await new Promise(r => setTimeout(r, 800));
+                try {
+                    report = await callGeminiApiForCorrection(student, grade, title, essay);
+                } catch (e) {
                     report = generateMockReportData(student, grade, title, essay);
                 }
 
