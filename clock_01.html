@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>歡樂時鐘小學堂 - 幼兒時間學習網頁</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Google Fonts for cute typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            fredoka: ['Fredoka', 'Zen Maru Gothic', 'sans-serif'],
+          },
+          colors: {
+            skyDay: '#e0f2fe',
+            skyNight: '#0f172a',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Fredoka', 'Zen Maru Gothic', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Prevents pull-to-refresh & browser swipe navigation while dragging hands */
+    .clock-touch-area {
+      touch-action: none;
+    }
+
+    /* Bouncy Button Effects */
+    .btn-bounce {
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    .btn-bounce:active {
+      transform: scale(0.92) translateY(2px);
+    }
+
+    /* Hand glow effects */
+    .hand-drag {
+      filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.25));
+      cursor: grab;
+    }
+    .hand-drag:active {
+      cursor: grabbing;
+    }
+
+    /* Custom animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(2deg); }
+    }
+    .animate-float {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { filter: drop-shadow(0 0 12px rgba(253, 224, 71, 0.8)); }
+      50% { filter: drop-shadow(0 0 24px rgba(253, 224, 71, 1)); }
+    }
+    .sun-glow {
+      animation: pulse-glow 2.5s infinite;
+    }
+  </style>
+</head>
+<body id="app-body" class="bg-gradient-to-b from-sky-200 via-amber-100 to-orange-100 min-h-screen transition-colors duration-700 text-slate-800 flex flex-col justify-between overflow-x-hidden select-none">
+
+  <!-- Top Header / Navigation -->
+  <header class="w-full max-w-4xl mx-auto px-4 pt-3 flex justify-between items-center z-10">
+    <div class="flex items-center gap-2 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-md border-2 border-amber-300">
+      <span class="text-2xl animate-bounce">⏰</span>
+      <h1 class="text-xl md:text-2xl font-black text-amber-700 tracking-wide">時鐘小學堂</h1>
+    </div>
+
+    <!-- Mode Selector -->
+    <div class="flex bg-amber-200/80 p-1.5 rounded-full shadow-inner border border-amber-300">
+      <button id="btn-mode-free" onclick="setMode('free')" class="px-4 py-1.5 rounded-full text-sm md:text-base font-bold transition-all duration-300 bg-white text-amber-800 shadow-md">
+        🎨 自由探索
+      </button>
+      <button id="btn-mode-quiz" onclick="setMode('quiz')" class="px-4 py-1.5 rounded-full text-sm md:text-base font-bold transition-all duration-300 text-amber-900 hover:text-black">
+        🎯 考驗模式
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="w-full max-w-3xl mx-auto px-3 py-2 flex-1 flex flex-col justify-center items-center gap-3">
+
+    <!-- Day / Night Dynamic Status Header -->
+    <div id="sky-status-card" class="w-full bg-white/85 backdrop-blur-md rounded-3xl p-3 shadow-lg border-4 border-amber-200 flex items-center justify-between transition-all duration-500">
+      <div class="flex items-center gap-3">
+        <!-- Celestial Icon (Sun / Moon) -->
+        <div id="celestial-icon-container" class="w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center bg-amber-100 border-2 border-amber-300 text-3xl md:text-4xl shadow-inner animate-float">
+          ☀️
+        </div>
+        <div>
+          <div id="day-night-title" class="text-lg md:text-xl font-black text-amber-900">
+            白天時間 ☀️
+          </div>
+          <div id="day-night-subtitle" class="text-xs md:text-sm font-bold text-amber-600">
+            太陽公公出來囉！
+          </div>
+        </div>
+      </div>
+
+      <!-- Voice Speech Button -->
+      <button onclick="speakCurrentTime()" class="btn-bounce bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-500 hover:to-orange-500 text-white font-extrabold px-4 py-2.5 rounded-2xl shadow-md border-b-4 border-orange-600 flex items-center gap-2 text-base md:text-lg">
+        <span class="text-xl md:text-2xl animate-pulse">🔊</span>
+        <span>報時</span>
+      </button>
+    </div>
+
+    <!-- Quiz Prompt Banner (Hidden in free mode) -->
+    <div id="quiz-banner" class="hidden w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-3.5 rounded-3xl shadow-xl text-center border-4 border-purple-300 transform transition-all">
+      <div class="text-sm font-semibold opacity-90">⭐ 小小考驗：請將時鐘轉到指定時間</div>
+      <div id="quiz-target-text" class="text-xl md:text-2xl font-black tracking-wider mt-0.5 text-yellow-300">
+        "上午 08 點 00 分"
+      </div>
+    </div>
+
+    <!-- Top Section: Interactive Circular Analog Clock -->
+    <div class="relative w-full flex justify-center items-center py-1">
+      <div class="relative w-[290px] h-[290px] sm:w-[340px] sm:h-[340px] md:w-[370px] md:h-[370px] clock-touch-area flex justify-center items-center">
+        
+        <!-- SVG Analog Clock Face -->
+        <svg id="clock-svg" viewBox="0 0 400 400" class="w-full h-full drop-shadow-2xl overflow-visible">
+          <!-- Outer Decorative Ring -->
+          <circle cx="200" cy="200" r="192" fill="#FEF3C7" stroke="#F59E0B" stroke-width="12" />
+          <circle cx="200" cy="200" r="182" fill="#FFFFFF" stroke="#FCD34D" stroke-width="6" />
+
+          <!-- Minute Tick Marks -->
+          <g id="minute-ticks" opacity="0.4"></g>
+
+          <!-- Clock Numbers (1-12) -->
+          <g id="clock-numbers"></g>
+
+          <!-- Center Mascot Decorative Circle -->
+          <circle cx="200" cy="200" r="28" fill="#FDE68A" stroke="#F59E0B" stroke-width="3" />
+          <text x="200" y="206" font-size="22" text-anchor="middle" dominant-baseline="middle">🐱</text>
+
+          <!-- Hour Hand (Short & Thick - Blue) -->
+          <g id="hour-hand-group" class="hand-drag">
+            <!-- Shadow line -->
+            <path d="M 200 200 L 200 100" stroke="rgba(0,0,0,0.15)" stroke-width="22" stroke-linecap="round" />
+            <!-- Main Hand -->
+            <path d="M 200 200 L 200 105" stroke="#2563EB" stroke-width="18" stroke-linecap="round" />
+            <path d="M 200 200 L 200 105" stroke="#60A5FA" stroke-width="10" stroke-linecap="round" />
+            <!-- Label Tag -->
+            <rect x="180" y="130" width="40" height="20" rx="10" fill="#1D4ED8" />
+            <text x="200" y="143" font-size="12" font-weight="900" fill="#FFFFFF" text-anchor="middle">時針</text>
+            <!-- Touch Handle Circle -->
+            <circle id="hour-handle" cx="200" cy="105" r="16" fill="#1E40AF" stroke="#FFFFFF" stroke-width="3" />
+          </g>
+
+          <!-- Minute Hand (Long & Slender - Red/Pink) -->
+          <g id="minute-hand-group" class="hand-drag">
+            <!-- Shadow line -->
+            <path d="M 200 200 L 200 48" stroke="rgba(0,0,0,0.15)" stroke-width="16" stroke-linecap="round" />
+            <!-- Main Hand -->
+            <path d="M 200 200 L 200 52" stroke="#DC2626" stroke-width="12" stroke-linecap="round" />
+            <path d="M 200 200 L 200 52" stroke="#F87171" stroke-width="6" stroke-linecap="round" />
+            <!-- Label Tag -->
+            <rect x="180" y="90" width="40" height="20" rx="10" fill="#B91C1C" />
+            <text x="200" y="103" font-size="12" font-weight="900" fill="#FFFFFF" text-anchor="middle">分針</text>
+            <!-- Touch Handle Circle at Tip -->
+            <circle id="minute-handle" cx="200" cy="52" r="18" fill="#991B1B" stroke="#FFFFFF" stroke-width="4" />
+            <circle cx="200" cy="52" r="6" fill="#FEF08A" />
+          </g>
+
+          <!-- Center Pin -->
+          <circle cx="200" cy="200" r="10" fill="#D97706" stroke="#FFFFFF" stroke-width="2" />
+        </svg>
+
+      </div>
+    </div>
+
+    <!-- Bottom Section: Synchronized Digital Clock -->
+    <div class="w-full bg-white/90 backdrop-blur-md rounded-3xl p-4 shadow-xl border-4 border-amber-300 flex flex-col items-center justify-center gap-1">
+      <div class="text-xs font-black tracking-widest text-amber-600 uppercase">數 位 時 鐘 DISPLAY</div>
+      
+      <div class="flex items-center justify-center gap-2 sm:gap-4 my-1">
+        <!-- AM/PM Badge -->
+        <div id="digital-period" class="bg-amber-100 text-amber-900 border-2 border-amber-400 font-extrabold px-3 py-1.5 rounded-2xl text-base sm:text-xl shadow-inner">
+          上午 AM
+        </div>
+
+        <!-- Hours:Minutes Digital Display -->
+        <div class="flex items-center bg-slate-900 text-green-400 font-mono px-5 py-2 rounded-2xl shadow-2xl border-4 border-slate-700 tracking-wider text-4xl sm:text-5xl font-black">
+          <span id="digital-hours">08</span>
+          <span class="animate-pulse mx-1 text-yellow-400">:</span>
+          <span id="digital-minutes">00</span>
+        </div>
+      </div>
+
+      <!-- Quick Helper Description -->
+      <div id="routine-hint" class="text-sm sm:text-base font-extrabold text-amber-800 bg-amber-50 px-4 py-1 rounded-full border border-amber-200">
+        🌤️ 早上好！準備開始美好的一天
+      </div>
+    </div>
+
+    <!-- Preset Quick Buttons for Toddler Routines -->
+    <div class="w-full flex flex-col gap-2">
+      <div class="text-center text-xs font-extrabold text-amber-800/80">👇 點擊生活時間按鈕快速體驗</div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <button onclick="setPresetTime(7, 0)" class="btn-bounce bg-amber-100 hover:bg-amber-200 text-amber-900 font-black p-2.5 rounded-2xl border-2 border-amber-300 shadow flex items-center justify-center gap-1.5 text-sm sm:text-base">
+          <span>🌅</span> 07:00 起床
+        </button>
+        <button onclick="setPresetTime(12, 0)" class="btn-bounce bg-orange-100 hover:bg-orange-200 text-orange-900 font-black p-2.5 rounded-2xl border-2 border-orange-300 shadow flex items-center justify-center gap-1.5 text-sm sm:text-base">
+          <span>🍱</span> 12:00 吃午飯
+        </button>
+        <button onclick="setPresetTime(15, 0)" class="btn-bounce bg-pink-100 hover:bg-pink-200 text-pink-900 font-black p-2.5 rounded-2xl border-2 border-pink-300 shadow flex items-center justify-center gap-1.5 text-sm sm:text-base">
+          <span>🍰</span> 15:00 點心時間
+        </button>
+        <button onclick="setPresetTime(21, 0)" class="btn-bounce bg-indigo-100 hover:bg-indigo-200 text-indigo-900 font-black p-2.5 rounded-2xl border-2 border-indigo-300 shadow flex items-center justify-center gap-1.5 text-sm sm:text-base">
+          <span>🌙</span> 21:00 準備睡覺
+        </button>
+      </div>
+
+      <!-- Time Adjustment Steppers & Sync Real Time -->
+      <div class="flex flex-wrap justify-center items-center gap-2 mt-1">
+        <button onclick="addMinutes(-15)" class="btn-bounce bg-white hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-xl border-2 border-slate-300 shadow-sm text-xs sm:text-sm">
+          ➖ 15分鐘
+        </button>
+        <button onclick="addMinutes(15)" class="btn-bounce bg-white hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-xl border-2 border-slate-300 shadow-sm text-xs sm:text-sm">
+          ➕ 15分鐘
+        </button>
+        <button onclick="addMinutes(60)" class="btn-bounce bg-white hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-xl border-2 border-slate-300 shadow-sm text-xs sm:text-sm">
+          ➕ 1小時
+        </button>
+        <button onclick="syncRealTime()" class="btn-bounce bg-emerald-500 hover:bg-emerald-600 text-white font-black px-3.5 py-1.5 rounded-xl shadow-md text-xs sm:text-sm flex items-center gap-1">
+          <span>🔄</span> 現在真實時間
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="w-full text-center py-2 text-xs font-bold text-amber-800/60">
+    適合 2-4 歲幼兒專用時間啟蒙教具 ‧ 支援觸控平板與電腦操作
+  </footer>
+
+  <!-- Application Logic -->
+  <script>
+    // --- Application State ---
+    // totalMinutes range: 0 to 1439 (representing 24 hours)
+    let totalMinutes = 8 * 60; // Default to 08:00 AM
+    let currentMode = 'free'; // 'free' or 'quiz'
+    let quizTargetMinutes = 0;
+
+    // Interaction dragging state
+    let activeHand = null; // 'minute' or 'hour'
+    let lastAngle = 0;
+
+    // Web Audio Context for synthesized sound effects
+    let audioCtx = null;
+
+    // Elements DOM cache
+    const clockSvg = document.getElementById('clock-svg');
+    const minuteHandGroup = document.getElementById('minute-hand-group');
+    const hourHandGroup = document.getElementById('hour-hand-group');
+    const digitalHoursEl = document.getElementById('digital-hours');
+    const digitalMinutesEl = document.getElementById('digital-minutes');
+    const digitalPeriodEl = document.getElementById('digital-period');
+    const celestialIconEl = document.getElementById('celestial-icon-container');
+    const dayNightTitleEl = document.getElementById('day-night-title');
+    const dayNightSubtitleEl = document.getElementById('day-night-subtitle');
+    const routineHintEl = document.getElementById('routine-hint');
+    const appBody = document.getElementById('app-body');
+    const skyStatusCard = document.getElementById('sky-status-card');
+
+    // Routine definitions for toddler learning
+    const routineHints = [
+      { start: 0, end: 359, icon: '🌙', title: '深夜黑夜 🌌', desc: '大家都在香甜的夢鄉裡...', bg: 'from-slate-900 via-indigo-950 to-slate-900', isNight: true },
+      { start: 360, end: 479, icon: '🌅', title: '早安清晨 ☀️', desc: '太陽公公起床囉！準備刷牙洗臉', bg: 'from-sky-200 via-amber-100 to-orange-100', isNight: false },
+      { start: 480, end: 659, icon: '🍳', title: '活力上午 🌤️', desc: '吃美味早餐，玩遊戲做運動！', bg: 'from-sky-300 via-sky-100 to-amber-100', isNight: false },
+      { start: 660, end: 839, icon: '🍱', title: '午餐與午睡 ☀️', desc: '享用美味午餐，乖乖睡午覺補充體力', bg: 'from-amber-200 via-orange-100 to-sky-200', isNight: false },
+      { start: 840, end: 1019, icon: '🍰', title: '歡樂下午 🎨', desc: '美味點心時間，快樂學習與玩耍', bg: 'from-orange-200 via-amber-100 to-sky-200', isNight: false },
+      { start: 1020, end: 1259, icon: '🥣', title: '溫馨夜晚 🌙', desc: '吃晚餐、洗個舒適熱水澡', bg: 'from-indigo-900 via-purple-900 to-slate-900', isNight: true },
+      { start: 1260, end: 1439, icon: '🛌', title: '床邊故事時間 💤', desc: '聽說故事，晚安準備睡覺囉', bg: 'from-slate-950 via-indigo-950 to-purple-950', isNight: true }
+    ];
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      initClockFace();
+      setupPointerEvents();
+      updateClockUI();
+    });
+
+    // --- Draw Clock Face ---
+    function initClockFace() {
+      const numbersGroup = document.getElementById('clock-numbers');
+      const ticksGroup = document.getElementById('minute-ticks');
+
+      // Draw minute ticks
+      for (let i = 0; i < 60; i++) {
+        if (i % 5 !== 0) {
+          const angle = i * 6 * (Math.PI / 180);
+          const x1 = 200 + 170 * Math.sin(angle);
+          const y1 = 200 - 170 * Math.cos(angle);
+          const x2 = 200 + 176 * Math.sin(angle);
+          const y2 = 200 - 176 * Math.cos(angle);
+
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', x1);
+          line.setAttribute('y1', y1);
+          line.setAttribute('x2', x2);
+          line.setAttribute('y2', y2);
+          line.setAttribute('stroke', '#D97706');
+          line.setAttribute('stroke-width', '2');
+          line.setAttribute('stroke-linecap', 'round');
+          ticksGroup.appendChild(line);
+        }
+      }
+
+      // Draw numbers 1 to 12 in round colorful bubbles
+      const bubbleColors = [
+        '#F87171', '#FB923C', '#FBBF24', '#34D399', 
+        '#38BDF8', '#818CF8', '#A78BFA', '#F472B6', 
+        '#F87171', '#FB923C', '#4ADE80', '#60A5FA'
+      ];
+
+      for (let i = 1; i <= 12; i++) {
+        const angle = i * 30 * (Math.PI / 180);
+        const radius = 142;
+        const cx = 200 + radius * Math.sin(angle);
+        const cy = 200 - radius * Math.cos(angle);
+
+        // Bubble background circle
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', cx);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', '20');
+        circle.setAttribute('fill', bubbleColors[i - 1]);
+        circle.setAttribute('stroke', '#FFFFFF');
+        circle.setAttribute('stroke-width', '3');
+        circle.setAttribute('class', 'drop-shadow-sm');
+        numbersGroup.appendChild(circle);
+
+        // Text Number
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', cx);
+        text.setAttribute('y', cy + 1);
+        text.setAttribute('font-size', '20');
+        text.setAttribute('font-weight', '900');
+        text.setAttribute('fill', '#FFFFFF');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.textContent = i;
+        numbersGroup.appendChild(text);
+      }
+    }
+
+    // --- Sound Synth Functions (Web Audio API) ---
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTickSound() {
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.03);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.03);
+      } catch (e) {}
+    }
+
+    function playSuccessChime() {
+      try {
+        initAudio();
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          const startTime = audioCtx.currentTime + idx * 0.09;
+          gain.gain.setValueAtTime(0, startTime);
+          gain.gain.linearRampToValueAtTime(0.25, startTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.28);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + 0.28);
+        });
+      } catch (e) {}
+    }
+
+    // --- Pointer & Drag Logic ---
+    function setupPointerEvents() {
+      const minuteHandle = document.getElementById('minute-hand-group');
+      const hourHandle = document.getElementById('hour-hand-group');
+
+      minuteHandle.addEventListener('pointerdown', (e) => startDrag(e, 'minute'));
+      hourHandle.addEventListener('pointerdown', (e) => startDrag(e, 'hour'));
+
+      window.addEventListener('pointermove', onDragMove);
+      window.addEventListener('pointerup', endDrag);
+      window.addEventListener('pointercancel', endDrag);
+    }
+
+    function getAngleFromEvent(e) {
+      const rect = clockSvg.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const x = e.clientX - centerX;
+      const y = e.clientY - centerY;
+      
+      let rad = Math.atan2(y, x);
+      let deg = rad * (180 / Math.PI) + 90; // 0 deg at top
+      if (deg < 0) deg += 360;
+      return deg;
+    }
+
+    function startDrag(e, hand) {
+      e.preventDefault();
+      initAudio();
+      activeHand = hand;
+      lastAngle = getAngleFromEvent(e);
+      clockSvg.setPointerCapture(e.pointerId);
+    }
+
+    function onDragMove(e) {
+      if (!activeHand) return;
+      e.preventDefault();
+
+      const currentAngle = getAngleFromEvent(e);
+      let deltaAngle = currentAngle - lastAngle;
+
+      // Handle angle wrap-around (350 deg -> 10 deg or vice versa)
+      if (deltaAngle > 180) deltaAngle -= 360;
+      if (deltaAngle < -180) deltaAngle += 360;
+
+      let oldMin = Math.floor(totalMinutes);
+
+      if (activeHand === 'minute') {
+        // Minute hand: 360 degrees = 60 minutes => 1 degree = 1/6 minute
+        let deltaMins = deltaAngle / 6;
+        totalMinutes = (totalMinutes + deltaMins + 1440) % 1440;
+      } else if (activeHand === 'hour') {
+        // Hour hand: 360 degrees = 12 hours (720 minutes) => 1 degree = 2 minutes
+        let deltaMins = deltaAngle * 2;
+        totalMinutes = (totalMinutes + deltaMins + 1440) % 1440;
+      }
+
+      lastAngle = currentAngle;
+
+      if (Math.floor(totalMinutes) !== oldMin) {
+        playTickSound();
+      }
+
+      updateClockUI();
+    }
+
+    function endDrag(e) {
+      if (!activeHand) return;
+      
+      // Snap minute to clean integer minute on release
+      totalMinutes = Math.round(totalMinutes) % 1440;
+      updateClockUI();
+
+      if (currentMode === 'quiz') {
+        checkQuizAnswer();
+      }
+
+      activeHand = null;
+    }
+
+    // --- Update Clock Display & UI ---
+    function updateClockUI() {
+      // Calculate rotation angles
+      const minAngle = (totalMinutes % 60) * 6; // 360 deg / 60 mins = 6 deg/min
+      const hourAngle = (totalMinutes % 720) * 0.5; // 360 deg / 720 mins = 0.5 deg/min
+
+      // Rotate hands smoothly
+      minuteHandGroup.setAttribute('transform', `rotate(${minAngle}, 200, 200)`);
+      hourHandGroup.setAttribute('transform', `rotate(${hourAngle}, 200, 200)`);
+
+      // Format Digital Time
+      const displayMins = Math.floor(totalMinutes % 60);
+      const displayHours24 = Math.floor(totalMinutes / 60);
+      
+      let periodStr = displayHours24 >= 12 ? '下午 PM' : '上午 AM';
+      let hours12 = displayHours24 % 12;
+      if (hours12 === 0) hours12 = 12;
+
+      digitalHoursEl.textContent = String(hours12).padStart(2, '0');
+      digitalMinutesEl.textContent = String(displayMins).padStart(2, '0');
+      digitalPeriodEl.textContent = periodStr;
+
+      // Dynamic Theme & Day/Night Routine Styling
+      const currentRoutine = routineHints.find(r => totalMinutes >= r.start && totalMinutes <= r.end) || routineHints[1];
+
+      routineHintEl.textContent = `${currentRoutine.icon} ${currentRoutine.desc}`;
+      dayNightTitleEl.textContent = currentRoutine.title;
+      dayNightSubtitleEl.textContent = currentRoutine.desc;
+      celestialIconEl.textContent = currentRoutine.icon;
+
+      if (currentRoutine.isNight) {
+        appBody.className = "bg-gradient-to-b " + currentRoutine.bg + " min-h-screen transition-colors duration-700 text-white flex flex-col justify-between overflow-x-hidden select-none";
+        skyStatusCard.className = "w-full bg-slate-800/90 backdrop-blur-md rounded-3xl p-3 shadow-lg border-4 border-indigo-500 flex items-center justify-between transition-all duration-500 text-white";
+        dayNightTitleEl.className = "text-lg md:text-xl font-black text-amber-300";
+        dayNightSubtitleEl.className = "text-xs md:text-sm font-bold text-indigo-200";
+        celestialIconEl.className = "w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center bg-indigo-900 border-2 border-indigo-400 text-3xl md:text-4xl shadow-inner animate-float";
+      } else {
+        appBody.className = "bg-gradient-to-b " + currentRoutine.bg + " min-h-screen transition-colors duration-700 text-slate-800 flex flex-col justify-between overflow-x-hidden select-none";
+        skyStatusCard.className = "w-full bg-white/85 backdrop-blur-md rounded-3xl p-3 shadow-lg border-4 border-amber-200 flex items-center justify-between transition-all duration-500 text-slate-800";
+        dayNightTitleEl.className = "text-lg md:text-xl font-black text-amber-900";
+        dayNightSubtitleEl.className = "text-xs md:text-sm font-bold text-amber-600";
+        celestialIconEl.className = "w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center bg-amber-100 border-2 border-amber-300 text-3xl md:text-4xl shadow-inner animate-float sun-glow";
+      }
+    }
+
+    // --- Helper Preset Functions ---
+    function setPresetTime(hours, mins) {
+      totalMinutes = (hours * 60 + mins) % 1440;
+      updateClockUI();
+      playSuccessChime();
+      speakCurrentTime();
+
+      if (currentMode === 'quiz') {
+        checkQuizAnswer();
+      }
+    }
+
+    function addMinutes(mins) {
+      totalMinutes = (totalMinutes + mins + 1440) % 1440;
+      updateClockUI();
+      playTickSound();
+
+      if (currentMode === 'quiz') {
+        checkQuizAnswer();
+      }
+    }
+
+    function syncRealTime() {
+      const now = new Date();
+      totalMinutes = now.getHours() * 60 + now.getMinutes();
+      updateClockUI();
+      playSuccessChime();
+      speakCurrentTime();
+    }
+
+    // --- Web Speech API (Text-to-Speech) ---
+    function speakCurrentTime(customText) {
+      if (!('speechSynthesis' in window)) return;
+
+      window.speechSynthesis.cancel(); // Stop ongoing speech
+
+      const displayHours24 = Math.floor(totalMinutes / 60);
+      const displayMins = Math.floor(totalMinutes % 60);
+      const periodName = displayHours24 >= 12 ? '下午' : '上午';
+      let hours12 = displayHours24 % 12;
+      if (hours12 === 0) hours12 = 12;
+
+      let minsText = displayMins === 0 ? '整' : `${displayMins} 分`;
+      let textToSpeak = customText || `現在是 ${periodName} ${hours12} 點 ${minsText}！`;
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = 'zh-TW';
+      utterance.rate = 0.88; // Slower rate for toddlers
+      utterance.pitch = 1.25; // Higher cheerful pitch
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // --- Mode Switching (Free Play vs Quiz Game) ---
+    function setMode(mode) {
+      currentMode = mode;
+      const btnFree = document.getElementById('btn-mode-free');
+      const btnQuiz = document.getElementById('btn-mode-quiz');
+      const quizBanner = document.getElementById('quiz-banner');
+
+      if (mode === 'free') {
+        btnFree.className = "px-4 py-1.5 rounded-full text-sm md:text-base font-bold transition-all duration-300 bg-white text-amber-800 shadow-md";
+        btnQuiz.className = "px-4 py-1.5 rounded-full text-sm md:text-base font-bold transition-all duration-300 text-amber-900 hover:text-black";
+        quizBanner.classList.add('hidden');
+      } else {
+        btnQuiz.className = "px-4 py-1.5 rounded-full text-sm md:text-base font-bold transition-all duration-300 bg-purple-600 text-white shadow-md";
+        btnFree.className = "px-4 py-1.5 rounded-full text-sm md:text-base font-bold transition-all duration-300 text-amber-900 hover:text-black";
+        quizBanner.classList.remove('hidden');
+        generateNewQuiz();
+      }
+    }
+
+    // --- Quiz Logic ---
+    function generateNewQuiz() {
+      // Pick toddler-friendly standard times (e.g., 07:00, 09:30, 12:00, 15:00, 18:00, 20:00)
+      const targetList = [
+        7 * 60,       // 07:00 AM
+        8 * 60 + 30,  // 08:30 AM
+        10 * 60,      // 10:00 AM
+        12 * 60,      // 12:00 PM
+        15 * 60,      // 03:00 PM
+        16 * 60 + 30, // 04:30 PM
+        19 * 60,      // 07:00 PM
+        21 * 60       // 09:00 PM
+      ];
+
+      // Pick random time different from current target
+      let nextTarget;
+      do {
+        nextTarget = targetList[Math.floor(Math.random() * targetList.length)];
+      } while (nextTarget === quizTargetMinutes);
+
+      quizTargetMinutes = nextTarget;
+
+      const targetH24 = Math.floor(quizTargetMinutes / 60);
+      const targetM = quizTargetMinutes % 60;
+      const period = targetH24 >= 12 ? '下午' : '上午';
+      let h12 = targetH24 % 12;
+      if (h12 === 0) h12 = 12;
+
+      const timeString = `${period} ${String(h12).padStart(2, '0')} 點 ${String(targetM).padStart(2, '0')} 分`;
+      document.getElementById('quiz-target-text').textContent = `"${timeString}"`;
+
+      speakCurrentTime(`請幫忙把時鐘指到 ${timeString}！`);
+    }
+
+    function checkQuizAnswer() {
+      // Allow +- 2 minutes tolerance for toddler touch accuracy
+      const diff = Math.abs((totalMinutes % 1440) - quizTargetMinutes);
+
+      if (diff <= 2 || diff >= 1438) {
+        playSuccessChime();
+        
+        // Confetti Celebration
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }
+
+        speakCurrentTime("太棒了！答對了！你真聰明！");
+
+        // Generate next question after short delay
+        setTimeout(() => {
+          if (currentMode === 'quiz') {
+            generateNewQuiz();
+          }
+        }, 3200);
+      }
+    }
+  </script>
+</body>
+</html>
