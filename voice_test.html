@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fish Audio 專屬語音模型測試範例</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col justify-center items-center">
+
+    <div class="max-w-2xl w-full bg-white rounded-3xl shadow-2xl border-4 border-sky-200 overflow-hidden my-4">
+        
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-sky-400 to-blue-500 p-6 text-white text-center relative">
+            <div class="inline-block bg-white/20 backdrop-blur-md px-4 py-1 rounded-full text-xs font-bold mb-2">
+                Fish Audio API 整合與備援測試
+            </div>
+            <h1 class="text-2xl md:text-3xl font-black tracking-wide">🐟 AI 專屬聲音測試</h1>
+            <p class="text-sky-100 text-sm mt-1">使用指定聲音模型進行即時語音合成</p>
+        </div>
+
+        <div class="p-6 md:p-8 space-y-6">
+
+            <!-- Model Info Card -->
+            <div class="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                    <div class="text-xs text-sky-600 font-bold">目前測試的 Fish Audio 聲音模型：</div>
+                    <div class="text-sm font-mono font-bold text-gray-800 break-all">22b0d395b8f44a3684001b56380adb0a</div>
+                </div>
+                <a href="https://fish.audio/m/22b0d395b8f44a3684001b56380adb0a" target="_blank" class="bg-sky-500 hover:bg-sky-600 text-white text-xs px-3 py-2 rounded-xl font-bold flex items-center gap-1 transition-colors shrink-0">
+                    <span>原始模型</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+            </div>
+
+            <!-- Step 1: API Key Input -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="text-sm font-bold text-gray-700">
+                        🔑 1. 輸入 Fish Audio API Key (選填)：
+                    </label>
+                    <span class="text-xs text-sky-600 font-bold bg-sky-100 px-2 py-0.5 rounded-md">若無 API Key 將自動切換內建語音</span>
+                </div>
+                <div class="relative">
+                    <input type="password" id="apiKey" placeholder="請在此貼上您的 API Key (可空著測試備援模式)" class="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-sky-400 focus:outline-none transition-colors text-sm pr-12">
+                    <button type="button" id="toggleKey" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-2">
+                        <i class="fa-solid fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-2 mt-2">
+                    <p class="text-xs text-gray-400">
+                        💡 可至 <a href="https://fish.audio/go-api/" target="_blank" class="text-sky-500 underline">Fish Audio 開發者中心</a> 免費申請 API Key。
+                    </p>
+                </div>
+            </div>
+
+            <!-- Step 2: Speech Text Input -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    💬 2. 輸入想要讓 AI 說的話：
+                </label>
+                <textarea id="speechText" rows="3" class="w-full p-4 rounded-2xl border-2 border-gray-200 focus:border-sky-400 focus:outline-none transition-colors text-base" placeholder="請輸入台詞...">小朋友你好呀！今天想跟小鴨鴨一起學習什麼幾何形狀呢？</textarea>
+
+                <!-- Quick Phrases for Kids -->
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <span class="text-xs font-bold text-gray-400 self-center">快速試聽台詞：</span>
+                    <button onclick="setSampleText('哇！你答對了，太棒了！得到一顆幸運星星！')" class="bg-pink-100 hover:bg-pink-200 text-pink-700 text-xs px-3 py-1.5 rounded-full font-bold transition-colors">🎉 讚美獎勵</button>
+                    <button onclick="setSampleText('這個是藍色的圓球，滾來滾去的圓球喔！')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs px-3 py-1.5 rounded-full font-bold transition-colors">🔵 藍色圓球</button>
+                    <button onclick="setSampleText('讓我們一起數數看有幾個紅蘋果吧！一、二、三！')" class="bg-green-100 hover:bg-green-200 text-green-700 text-xs px-3 py-1.5 rounded-full font-bold transition-colors">🍎 趣味數數</button>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button id="btnGenerate" onclick="generateAndPlaySpeech()" class="bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-black py-3.5 px-4 rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-base">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Fish Audio API 合成</span>
+                </button>
+                <button onclick="playWithWebSpeechDirect()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3.5 px-4 rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-base">
+                    <i class="fa-solid fa-volume-high"></i>
+                    <span>瀏覽器語音試聽 (免 API)</span>
+                </button>
+            </div>
+
+            <!-- Status Indicator Toast -->
+            <div id="statusBox" class="hidden rounded-2xl p-4 text-sm font-bold flex items-start gap-3 transition-all duration-300">
+                <i id="statusIcon" class="text-xl mt-0.5 shrink-0"></i>
+                <div id="statusMessage" class="leading-relaxed"></div>
+            </div>
+
+            <!-- Audio Player Container -->
+            <div id="audioPlayerContainer" class="hidden pt-2">
+                <label class="block text-xs font-bold text-gray-500 mb-1">Generated Audio Result:</label>
+                <audio id="audioPlayer" controls class="w-full rounded-xl"></audio>
+            </div>
+
+            <!-- Code Integration Guide -->
+            <div class="border-t border-gray-200 pt-6">
+                <h3 class="font-bold text-gray-800 mb-2 flex items-center gap-2 text-sm md:text-base">
+                    <i class="fa-solid fa-shield-halved text-sky-500"></i>
+                    如何徹底解決瀏覽器跨域 (CORS) 限制？
+                </h3>
+                <p class="text-xs text-gray-600 mb-3 leading-relaxed">
+                    瀏覽器出於安全機制，禁止網頁前端直接向 `api.fish.audio` 傳送包含 API Key 的跨域 `POST` 請求。正式環境只需部署免費的 <strong>Cloudflare Worker</strong> 當作轉接中繼站即可解決：
+                </p>
+                <pre class="bg-gray-900 text-emerald-400 p-4 rounded-2xl text-xs overflow-x-auto leading-relaxed"><code>// Cloudflare Worker 後端中繼站程式碼 (index.js)
+export default {
+  async fetch(request, env) {
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, model",
+        },
+      });
+    }
+
+    const response = await fetch("https://api.fish.audio/v1/tts", {
+      method: "POST",
+      headers: request.headers,
+      body: request.body
+    });
+
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set("Access-Control-Allow-Origin", "*");
+    return new Response(response.body, { status: response.status, headers: newHeaders });
+  }
+};</code></pre>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Toggle password visibility
+        document.getElementById('toggleKey').addEventListener('click', function() {
+            const apiKeyInput = document.getElementById('apiKey');
+            const eyeIcon = document.getElementById('eyeIcon');
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                eyeIcon.className = 'fa-solid fa-eye-slash';
+            } else {
+                apiKeyInput.type = 'password';
+                eyeIcon.className = 'fa-solid fa-eye';
+            }
+        });
+
+        function setSampleText(text) {
+            document.getElementById('speechText').value = text;
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusBox = document.getElementById('statusBox');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusMessage = document.getElementById('statusMessage');
+
+            statusBox.classList.remove('hidden', 'bg-blue-50', 'text-blue-700', 'bg-red-50', 'text-red-700', 'bg-green-50', 'text-green-700', 'bg-amber-50', 'text-amber-800');
+
+            if (type === 'loading') {
+                statusBox.classList.add('bg-blue-50', 'text-blue-700');
+                statusIcon.className = 'fa-solid fa-spinner animate-spin';
+            } else if (type === 'success') {
+                statusBox.classList.add('bg-green-50', 'text-green-700');
+                statusIcon.className = 'fa-solid fa-circle-check';
+            } else if (type === 'error') {
+                statusBox.classList.add('bg-red-50', 'text-red-700');
+                statusIcon.className = 'fa-solid fa-circle-xmark';
+            } else if (type === 'warning') {
+                statusBox.classList.add('bg-amber-50', 'text-amber-800');
+                statusIcon.className = 'fa-solid fa-circle-info';
+            }
+
+            statusMessage.innerHTML = message;
+        }
+
+        function playWithWebSpeechDirect() {
+            const speechText = document.getElementById('speechText').value.trim();
+            if (!speechText) {
+                showStatus("請輸入要朗讀的內容！", 'warning');
+                return;
+            }
+            showStatus("🔊 正使用瀏覽器內建語音引擎朗讀中...", 'success');
+            speakWithWebSpeechFallback(speechText);
+        }
+
+        async function generateAndPlaySpeech() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const speechText = document.getElementById('speechText').value.trim();
+            const btnGenerate = document.getElementById('btnGenerate');
+            const audioPlayerContainer = document.getElementById('audioPlayerContainer');
+            const audioPlayer = document.getElementById('audioPlayer');
+
+            if (!speechText) {
+                showStatus("請輸入合成文字內容！", 'warning');
+                return;
+            }
+
+            if (!apiKey) {
+                showStatus("💡 未輸入 API Key。已自動轉接至瀏覽器內建語音發音！", 'warning');
+                speakWithWebSpeechFallback(speechText);
+                return;
+            }
+
+            // Disable button & Show loading
+            btnGenerate.disabled = true;
+            btnGenerate.classList.add('opacity-50', 'cursor-not-allowed');
+            showStatus("正在呼叫 Fish Audio API 生成語音中...", 'loading');
+
+            const VOICE_MODEL_ID = "22b0d395b8f44a3684001b56380adb0a";
+
+            try {
+                const requestPayload = {
+                    text: speechText,
+                    reference_id: VOICE_MODEL_ID,
+                    format: "mp3"
+                };
+
+                const requestHeaders = {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "model": "s2.1-pro"
+                };
+
+                // Direct endpoint request attempt
+                const targetUrl = "https://api.fish.audio/v1/tts";
+                
+                let response = null;
+                try {
+                    response = await fetch(targetUrl, {
+                        method: "POST",
+                        headers: requestHeaders,
+                        body: JSON.stringify(requestPayload)
+                    });
+                } catch (fetchErr) {
+                    // Gracefully catch browser CORS network error without console crash
+                    showStatus("⚠️ 瀏覽器阻擋跨域 (CORS) 請求。已自動啟用語音備援為您朗讀台詞！<br/><span class='text-xs opacity-80'>提示：生產環境請透過 Cloudflare Worker 或後端轉接。</span>", 'warning');
+                    speakWithWebSpeechFallback(speechText);
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`API 請求回應狀態碼 (${response.status}): ${errText || response.statusText}`);
+                }
+
+                // Get audio blob and play
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+
+                audioPlayer.src = audioUrl;
+                audioPlayerContainer.classList.remove('hidden');
+                
+                showStatus("🎉 Fish Audio 語音生成成功！播放中...", 'success');
+                audioPlayer.play();
+
+            } catch (error) {
+                showStatus(`語音生成說明: ${error.message}<br/>已切換至瀏覽器語音備援朗讀。`, 'warning');
+                speakWithWebSpeechFallback(speechText);
+            } finally {
+                btnGenerate.disabled = false;
+                btnGenerate.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // Web Speech API fallback helper
+        function speakWithWebSpeechFallback(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-TW';
+                utterance.rate = 0.95;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+    </script>
+</body>
+</html>
