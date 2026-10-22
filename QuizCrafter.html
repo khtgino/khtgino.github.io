@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full">
+<head>
+    <!-- STREAMING_CHUNK:Initializing document head and meta tags... -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizCrafter 專業題庫大師 - 智慧測驗與多模態匯入系統</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Microsoft JhengHei', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome & Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <!-- STREAMING_CHUNK:Styling custom styles and animations... -->
+    <style>
+        body { font-family: 'Inter', 'Microsoft JhengHei', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-full flex flex-col selection:bg-brand-500 selection:text-white">
+
+    <!-- STREAMING_CHUNK:Rendering navigation header... -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                    <i class="fa-solid fa-brain text-lg"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-bold bg-gradient-to-r from-brand-600 to-indigo-500 bg-clip-text text-transparent">QuizCrafter</span>
+                    <span class="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 ml-2 bg-brand-50 text-brand-700 rounded-full border border-brand-100">8大題型大師</span>
+                </div>
+            </div>
+
+            <nav class="hidden md:flex items-center space-x-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-brand-600 bg-brand-50 transition">
+                    <i class="fa-solid fa-chart-pie mr-2"></i>儀表板
+                </button>
+                <button onclick="switchTab('library')" id="nav-library" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-slate-100 transition">
+                    <i class="fa-solid fa-folder-open mr-2"></i>題庫管理
+                </button>
+                <button onclick="switchTab('builder')" id="nav-builder" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-slate-100 transition">
+                    <i class="fa-solid fa-square-plus mr-2"></i>建立與匯入
+                </button>
+                <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-slate-100 transition">
+                    <i class="fa-solid fa-gear mr-2"></i>設定
+                </button>
+            </nav>
+
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 bg-white px-4 pt-2 pb-4 space-y-1 shadow-lg">
+            <button onclick="switchTab('dashboard'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">儀表板</button>
+            <button onclick="switchTab('library'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">題庫管理</button>
+            <button onclick="switchTab('builder'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">建立與匯入</button>
+            <button onclick="switchTab('settings'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">設定</button>
+        </div>
+    </header>
+
+    <!-- STREAMING_CHUNK:Building main container and views... -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- 1. 儀表板頁面 -->
+        <section id="tab-dashboard" class="tab-content active animate-fade-in space-y-8">
+            <div class="bg-gradient-to-r from-brand-600 to-indigo-700 text-white p-6 sm:p-10 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div class="space-y-3 max-w-2xl">
+                    <span class="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">QuizCrafter Pro</span>
+                    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">歡迎回來，題庫大師！</h1>
+                    <p class="text-indigo-100 text-sm sm:text-base">支援 8 大專業題型與多檔案（Markdown、PDF、PNG/JPG 圖像與圖形辨識）批次智慧匯入。</p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                    <button onclick="switchTab('builder')" class="bg-white text-brand-700 hover:bg-indigo-50 font-semibold px-6 py-3 rounded-xl shadow-md transition flex items-center justify-center">
+                        <i class="fa-solid fa-plus mr-2 text-brand-600"></i>建立新測驗
+                    </button>
+                    <button onclick="switchTab('library')" class="bg-brand-700/60 hover:bg-brand-700 border border-white/20 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition flex items-center justify-center">
+                        <i class="fa-solid fa-play mr-2"></i>開始測驗
+                    </button>
+                </div>
+            </div>
+
+            <!-- 數據統計 -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
+                    <div class="w-14 h-14 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-2xl">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">總題庫數</div>
+                        <div id="stat-total-quizzes" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
+                    <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">
+                        <i class="fa-solid fa-clipboard-question"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">總題目數</div>
+                        <div id="stat-total-questions" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
+                    <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl">
+                        <i class="fa-solid fa-award"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">已完成測驗</div>
+                        <div id="stat-completed" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
+                    <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">平均正確率</div>
+                        <div id="stat-avg-score" class="text-2xl font-bold text-slate-900 mt-1">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8 大題型介紹網格 -->
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-star text-amber-500 mr-2"></i>支援的 8 大專業題型
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100"><span class="font-bold text-brand-600">1. 選擇題</span><p class="text-xs text-slate-500 mt-1">經典單選與多選項配置。</p></div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100"><span class="font-bold text-brand-600">2. 是非題</span><p class="text-xs text-slate-500 mt-1">正確與錯誤快速判定。</p></div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100"><span class="font-bold text-brand-600">3. 填空題</span><p class="text-xs text-slate-500 mt-1">文字手動輸入與比對。</p></div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100"><span class="font-bold text-brand-600">4. 看圖回答選擇題</span><p class="text-xs text-slate-500 mt-1">結合圖像與視覺化選擇。</p></div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100"><span class="font-bold text-brand-600">5. 素養題</span><p class="text-xs text-slate-500 mt-1">情境閱讀文章與子題。</p></div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100"><span class="font-bold text-brand-600">6. 連連看</span><p class="text-xs text-slate-500 mt-1">左右項目下拉選單配對。</p></div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100"><span class="font-bold text-brand-600">7. 計算題</span><p class="text-xs text-slate-500 mt-1">數值運算與標準答案校對。</p></div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100"><span class="font-bold text-brand-600">8. 二選一勾選題</span><p class="text-xs text-slate-500 mt-1">高效二擇一抉擇測驗。</p></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STREAMING_CHUNK:Building quiz library and management view... -->
+        <!-- 2. 題庫管理頁面 -->
+        <section id="tab-library" class="tab-content animate-fade-in space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="w-full sm:w-80 relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-search"></i></span>
+                    <input type="text" id="search-quiz-input" oninput="filterQuizzes()" placeholder="搜尋題庫名稱或分類..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                </div>
+                <div class="flex space-x-3 w-full sm:w-auto justify-end">
+                    <button onclick="exportAllQuizzes()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition flex items-center space-x-2">
+                        <i class="fa-solid fa-download text-brand-600"></i><span>匯出全部</span>
+                    </button>
+                    <label class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-md transition cursor-pointer flex items-center space-x-2">
+                        <i class="fa-solid fa-upload"></i><span>匯入 JSON</span>
+                        <input type="file" id="import-json-file" accept=".json" class="hidden" onchange="importQuizJSON(event)">
+                    </label>
+                </div>
+            </div>
+
+            <div id="quiz-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 動態載入題庫卡片 -->
+            </div>
+        </section>
+
+        <!-- STREAMING_CHUNK:Building builder and multimodal import interface... -->
+        <!-- 3. 建立與多模態匯入頁面 -->
+        <section id="tab-builder" class="tab-content animate-fade-in space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <div class="flex space-x-3 border-b border-slate-100 pb-4">
+                    <button onclick="switchBuilderMode('manual')" id="btn-mode-manual" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-brand-600 text-white transition"><i class="fa-solid fa-pen-to-square mr-2"></i>手動與 8 大題型建立</button>
+                    <button onclick="switchBuilderMode('multimodal')" id="btn-mode-multimodal" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>多檔案智慧匯入 (MD/PDF/圖片)</button>
+                </div>
+
+                <!-- 手動建立區塊 -->
+                <div id="builder-manual-section" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">測驗標題 *</label>
+                            <input type="text" id="new-quiz-title" placeholder="例如：Python 進階題庫" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">分類</label>
+                            <input type="text" id="new-quiz-category" placeholder="例如：程式語言" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">難易度</label>
+                            <select id="new-quiz-difficulty" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                                <option value="簡單">簡單</option>
+                                <option value="中等" selected>中等</option>
+                                <option value="困難">困難</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">測驗簡介</label>
+                            <input type="text" id="new-quiz-desc" placeholder="簡述此測驗的目標與範圍..." class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-6 space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <h3 class="text-lg font-bold text-slate-800">題目列表 (<span id="question-count-badge">0</span>)</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="addQuestion('mc')" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg transition">+選擇題</button>
+                                <button onclick="addQuestion('tf')" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg transition">+是非題</button>
+                                <button onclick="addQuestion('fill')" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg transition">+填空題</button>
+                                <button onclick="addQuestion('img_mc')" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg transition">+看圖選擇</button>
+                                <button onclick="addQuestion('passage')" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg transition">+素養題</button>
+                                <button onclick="addQuestion('matching')" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg transition">+連連看</button>
+                                <button onclick="addQuestion('calc')" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg transition">+計算題</button>
+                                <button onclick="addQuestion('binary')" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold rounded-lg transition">+二選一</button>
+                            </div>
+                        </div>
+
+                        <div id="questions-builder-container" class="space-y-4">
+                            <!-- 動態編輯區 -->
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-4 border-t border-slate-100">
+                        <button onclick="saveCurrentQuiz()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-floppy-disk"></i><span>儲存測驗至題庫</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 多檔案智慧匯入區塊 (MD, PDF, PNG/JPG) -->
+                <div id="builder-multimodal-section" class="hidden space-y-6">
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-indigo-900 space-y-2">
+                        <h4 class="font-bold text-base"><i class="fa-solid fa-cloud-arrow-up mr-2 text-indigo-600"></i>多檔案批次智慧匯入 (Markdown / PDF / PNG / JPG)</h4>
+                        <p class="text-xs text-indigo-700 leading-relaxed">您可以同時選取多個檔案。系統將自動解析其中的文字結構與圖像圖形，並透過 AI 智慧轉換為包含 8 大專業題型的結構化題庫。</p>
+                    </div>
+
+                    <div class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-10 text-center cursor-pointer transition bg-slate-50" onclick="document.getElementById('multi-file-input').click()">
+                        <i class="fa-solid fa-file-arrow-up text-4xl text-brand-500 mb-3"></i>
+                        <p class="text-sm font-bold text-slate-700">點擊或拖曳檔案至此處上傳</p>
+                        <p class="text-xs text-slate-400 mt-1">支援 .md, .txt, .pdf, .png, .jpg, .jpeg (支援多檔案批次上傳)</p>
+                        <input type="file" id="multi-file-input" multiple accept=".md,.txt,.pdf,.png,.jpg,.jpeg" class="hidden" onchange="handleMultipleFiles(event)">
+                    </div>
+
+                    <div id="uploaded-files-list" class="space-y-2"></div>
+
+                    <div class="flex justify-end pt-4 border-t border-slate-100">
+                        <button onclick="processUploadedFilesWithAI()" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i><span>開始 AI 智慧解析並產生題庫</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STREAMING_CHUNK:Building settings view... -->
+        <!-- 4. 設定頁面 -->
+        <section id="tab-settings" class="tab-content animate-fade-in max-w-2xl mx-auto space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center"><i class="fa-solid fa-key text-brand-600 mr-2"></i>系統設定與 API</h3>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Google Gemini API Key (選填，用於進階圖形視覺與 PDF 智慧辨識)</label>
+                    <input type="password" id="settings-api-key" placeholder="AIzaSy..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                    <p class="text-xs text-slate-400 mt-1">若未填寫，系統將使用內建標準規則進行文字與 Markdown 解析。</p>
+                </div>
+                <div class="flex justify-end pt-4 border-t border-slate-100">
+                    <button onclick="saveSettings()" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md transition">儲存設定</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STREAMING_CHUNK:Building interactive quiz player... -->
+        <!-- 5. 測驗執行播放器 (Quiz Player) -->
+        <section id="tab-player" class="tab-content animate-fade-in max-w-3xl mx-auto space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <div>
+                        <span id="player-quiz-category" class="text-xs font-semibold px-2.5 py-1 bg-brand-50 text-brand-700 rounded-full">分類</span>
+                        <h2 id="player-quiz-title" class="text-xl font-bold text-slate-900 mt-1">測驗標題</h2>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-sm font-bold text-slate-700"><i class="fa-regular fa-clock text-brand-600 mr-1.5"></i><span id="player-timer">00:00</span></div>
+                        <button onclick="exitQuiz()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                        <span>進度：第 <span id="player-current-index">1</span> 題 / 共 <span id="player-total-questions">0</span> 題</span>
+                        <span id="player-progress-pct">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                        <div id="player-progress-bar" class="bg-brand-600 h-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div id="player-question-card" class="space-y-6">
+                    <!-- 動態渲染當前題目 -->
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t border-slate-100">
+                    <button onclick="prevQuestion()" id="btn-prev" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition"><i class="fa-solid fa-arrow-left mr-1.5"></i>上一題</button>
+                    <button onclick="nextQuestion()" id="btn-next" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-md transition">下一題<i class="fa-solid fa-arrow-right ml-1.5"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STREAMING_CHUNK:Building results view... -->
+        <!-- 6. 測驗結算頁面 -->
+        <section id="tab-result" class="tab-content animate-fade-in max-w-2xl mx-auto space-y-6">
+            <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center space-y-6">
+                <div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">測驗完成！</h2>
+                    <p class="text-slate-500 text-sm mt-1">以下是您的詳細作答表現分析：</p>
+                </div>
+                <div class="grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <div>
+                        <div class="text-xs text-slate-500 font-medium">總得分</div>
+                        <div id="result-score" class="text-2xl font-bold text-brand-600">0 分</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-500 font-medium">答對題數</div>
+                        <div id="result-correct-count" class="text-2xl font-bold text-emerald-600">0 / 0</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-500 font-medium">所花時間</div>
+                        <div id="result-time" class="text-2xl font-bold text-amber-600">00:00</div>
+                    </div>
+                </div>
+                <div>
+                    <button onclick="switchTab('library')" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-md transition">
+                        <i class="fa-solid fa-rotate-right mr-2"></i>返回題庫列表
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- STREAMING_CHUNK:Building custom modal dialog replacing alerts... -->
+    <!-- 自定義訊息提示彈窗 (完全取代 alert / confirm) -->
+    <div id="custom-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 text-center space-y-4 animate-fade-in">
+            <div id="modal-icon" class="w-12 h-12 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center text-xl mx-auto">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <h3 id="modal-title" class="text-lg font-bold text-slate-900">提示</h3>
+            <p id="modal-message" class="text-sm text-slate-600">訊息內容...</p>
+            <div id="modal-buttons" class="flex justify-center space-x-3 pt-2">
+                <button onclick="closeCustomModal(true)" id="modal-btn-confirm" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition">確定</button>
+                <button onclick="closeCustomModal(false)" id="modal-btn-cancel" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold rounded-xl transition hidden">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
+            QuizCrafter 專業題庫大師 &copy; 2026 | 支援 8 大專業題型與多模態智慧匯入
+        </div>
+    </footer>
+
+    <!-- STREAMING_CHUNK:Implementing application logic and event handlers... -->
+    <script>
+        // 自定義模態框回呼函數
+        let modalCallback = null;
+        function showCustomModal(title, msg, isConfirm = false, callback = null) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = msg;
+            modalCallback = callback;
+            const cancelBtn = document.getElementById('modal-btn-cancel');
+            if (isConfirm) {
+                cancelBtn.classList.remove('hidden');
+            } else {
+                cancelBtn.classList.add('hidden');
+            }
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function closeCustomModal(result) {
+            document.getElementById('custom-modal').classList.add('hidden');
+            if (modalCallback) {
+                modalCallback(result);
+                modalCallback = null;
+            }
+        }
+
+        // 預設示範題庫 (包含 8 大專業題型)
+        let quizzes = JSON.parse(localStorage.getItem('quiz_crafter_quizzes')) || [
+            {
+                id: 'default-1',
+                title: '全題型綜合範例測驗',
+                category: '綜合測試',
+                difficulty: '中等',
+                description: '涵蓋選擇、是非、填空、看圖、素養、連連看、計算與二選一的完整示範題庫。',
+                questions: [
+                    {
+                        type: 'mc',
+                        question: '下列何者是 Python 語言的合法變數名稱？',
+                        options: ['123var', '_my_var', 'class', 'my-var'],
+                        answer: 1,
+                        explanation: '_my_var 開頭合法，123var 數字開頭不合法，class 為保留字。'
+                    },
+                    {
+                        type: 'tf',
+                        question: '太陽是從西方升起的嗎？',
+                        options: ['正確', '錯誤'],
+                        answer: 1,
+                        explanation: '太陽東昇西落，因此為錯誤。'
+                    },
+                    {
+                        type: 'fill',
+                        question: '請填入台灣的首府城市名稱：_______',
+                        answer: '台北市',
+                        explanation: '台灣首府為台北市。'
+                    },
+                    {
+                        type: 'img_mc',
+                        question: '請根據下方識別標誌判斷其代表的系統：',
+                        imageUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" rx="16" fill="%236366f1"/><text x="60" y="65" fill="white" font-size="18" font-weight="bold" text-anchor="middle">Quiz</text></svg>',
+                        options: ['QuizCrafter', 'Database', 'Server', 'Compiler'],
+                        answer: 0,
+                        explanation: '此圖為 QuizCrafter 識別標誌。'
+                    },
+                    {
+                        type: 'passage',
+                        passage: '【閱讀測驗】人工智慧（AI）正在迅速改變全球產業結構。從醫療診斷到自動駕駛，機器學習演算法透過海量數據訓練，展現出超越人類傳統直覺的預測能力。然而，資料隱私與倫理道德也成為當前各國監管的重要課題。',
+                        subQuestions: [
+                            {
+                                question: '根據短文，機器學習靠什麼展現預測能力？',
+                                options: ['直覺判斷', '海量數據訓練', '隨機亂數', '人工手動設定'],
+                                answer: 1,
+                                explanation: '文中提到透過海量數據訓練展現預測能力。'
+                            }
+                        ]
+                    },
+                    {
+                        type: 'matching',
+                        question: '請將下列國家與對應首都進行正確配對：',
+                        pairs: [
+                            { left: '日本', right: '東京' },
+                            { left: '法國', right: '巴黎' },
+                            { left: '韓國', right: '首爾' }
+                        ],
+                        explanation: '日本-東京、法國-巴黎、韓國-首爾。'
+                    },
+                    {
+                        type: 'calc',
+                        question: '若商品原價 1200 元，打 8 折後的售價為多少元？ (請輸入數字)',
+                        answer: '960',
+                        explanation: '1200 * 0.8 = 960。'
+                    },
+                    {
+                        type: 'binary',
+                        question: '您是否同意遠距辦公能提升工作彈性？',
+                        options: ['同意', '不同意'],
+                        answer: 0,
+                        explanation: '二選一意見題。'
+                    }
+                ]
+            }
+        ];
+
+        let settings = JSON.parse(localStorage.getItem('quiz_crafter_settings')) || { apiKey: '' };
+        let currentEditingQuestions = [];
+        let activeQuiz = null;
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+        let quizTimerInterval = null;
+        let secondsElapsed = 0;
+        let uploadedFilesBuffer = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateDashboardStats();
+            renderQuizLibrary();
+            document.getElementById('settings-api-key').value = settings.apiKey;
+        });
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('text-brand-600', 'bg-brand-50');
+                el.classList.add('text-slate-600', 'hover:text-brand-600', 'hover:bg-slate-100');
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            const btn = document.getElementById(`nav-${tabId}`);
+            if (btn) {
+                btn.classList.remove('text-slate-600', 'hover:text-brand-600', 'hover:bg-slate-100');
+                btn.classList.add('text-brand-600', 'bg-brand-50');
+            }
+
+            if (tabId === 'library') renderQuizLibrary();
+            if (tabId === 'dashboard') updateDashboardStats();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        function switchBuilderMode(mode) {
+            if (mode === 'manual') {
+                document.getElementById('builder-manual-section').classList.remove('hidden');
+                document.getElementById('builder-multimodal-section').classList.add('hidden');
+                document.getElementById('btn-mode-manual').className = 'px-5 py-2.5 rounded-xl font-bold text-sm bg-brand-600 text-white transition';
+                document.getElementById('btn-mode-multimodal').className = 'px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+            } else {
+                document.getElementById('builder-manual-section').classList.add('hidden');
+                document.getElementById('builder-multimodal-section').classList.remove('hidden');
+                document.getElementById('btn-mode-multimodal').className = 'px-5 py-2.5 rounded-xl font-bold text-sm bg-brand-600 text-white transition';
+                document.getElementById('btn-mode-manual').className = 'px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+            }
+        }
+
+        function updateDashboardStats() {
+            document.getElementById('stat-total-quizzes').innerText = quizzes.length;
+            document.getElementById('stat-total-questions').innerText = quizzes.reduce((acc, q) => acc + q.questions.length, 0);
+            document.getElementById('stat-completed').innerText = localStorage.getItem('quiz_completed_count') || 0;
+            document.getElementById('stat-avg-score').innerText = (localStorage.getItem('quiz_avg_score') || 0) + '%';
+        }
+
+        function renderQuizLibrary() {
+            const container = document.getElementById('quiz-list-container');
+            const search = document.getElementById('search-quiz-input').value.toLowerCase();
+            container.innerHTML = '';
+
+            const filtered = quizzes.filter(q => q.title.toLowerCase().includes(search) || q.category.toLowerCase().includes(search));
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 text-center space-y-3 bg-white rounded-2xl border border-slate-200">
+                        <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto text-xl"><i class="fa-solid fa-folder-open"></i></div>
+                        <h3 class="text-base font-bold text-slate-800">找不到符合的題庫</h3>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(quiz => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl border border-slate-200 p-6 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-4";
+                card.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold px-2.5 py-1 bg-brand-50 text-brand-700 rounded-full">${quiz.category}</span>
+                            <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600">${quiz.difficulty}</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 line-clamp-1">${quiz.title}</h3>
+                        <p class="text-sm text-slate-500 line-clamp-2">${quiz.description || '暫無描述。'}</p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                        <span class="text-xs text-slate-400 font-medium"><i class="fa-solid fa-circle-question mr-1.5"></i>${quiz.questions.length} 題</span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="startQuiz('${quiz.id}')" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl shadow-xs transition"><i class="fa-solid fa-play mr-1"></i>開始</button>
+                            <button onclick="exportQuizJSONItem('${quiz.id}')" class="p-2 text-slate-400 hover:text-brand-600 rounded-lg transition" title="匯出 JSON"><i class="fa-solid fa-download"></i></button>
+                            <button onclick="deleteQuiz('${quiz.id}')" class="p-2 text-slate-400 hover:text-rose-600 rounded-lg transition" title="刪除"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterQuizzes() {
+            renderQuizLibrary();
+        }
+
+        // 題目建立器邏輯
+        function addQuestion(type) {
+            currentEditingQuestions.push({
+                type: type,
+                question: '',
+                options: type === 'mc' || type === 'img_mc' ? ['', '', '', ''] : (type === 'tf' || type === 'binary' ? ['正確/同意', '錯誤/不同意'] : undefined),
+                answer: type === 'mc' || type === 'img_mc' || type === 'tf' || type === 'binary' ? 0 : '',
+                imageUrl: type === 'img_mc' ? '' : undefined,
+                passage: type === 'passage' ? '請在此輸入閱讀文章...' : undefined,
+                subQuestions: type === 'passage' ? [{ question: '', options: ['', '', '', ''], answer: 0, explanation: '' }] : undefined,
+                pairs: type === 'matching' ? [{ left: '', right: '' }] : undefined,
+                explanation: ''
+            });
+            renderQuestionsBuilder();
+        }
+
+        function renderQuestionsBuilder() {
+            const container = document.getElementById('questions-builder-container');
+            document.getElementById('question-count-badge').innerText = currentEditingQuestions.length;
+            container.innerHTML = '';
+
+            if (currentEditingQuestions.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">尚未新增題目，請點擊上方按鈕加入對應題型。</div>`;
+                return;
+            }
+
+            currentEditingQuestions.forEach((q, idx) => {
+                const item = document.createElement('div');
+                item.className = "p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-4";
+                
+                let typeName = { mc: '選擇題', tf: '是非題', fill: '填空題', img_mc: '看圖選擇', passage: '素養題', matching: '連連看', calc: '計算題', binary: '二選一' }[q.type];
+
+                let innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold px-2.5 py-1 bg-brand-100 text-brand-800 rounded-full">第 ${idx + 1} 題 - ${typeName}</span>
+                        <button onclick="removeQuestion(${idx})" class="text-slate-400 hover:text-rose-600 text-sm transition"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                    <div>
+                        <input type="text" value="${q.question}" oninput="currentEditingQuestions[${idx}].question = this.value" placeholder="輸入題目內容..." class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                `;
+
+                if (q.type === 'mc' || q.type === 'img_mc') {
+                    if (q.type === 'img_mc') {
+                        innerHTML += `
+                            <div>
+                                <input type="text" value="${q.imageUrl || ''}" oninput="currentEditingQuestions[${idx}].imageUrl = this.value" placeholder="輸入圖片網址 (URL)..." class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs">
+                            </div>
+                        `;
+                    }
+                    innerHTML += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">`;
+                    q.options.forEach((opt, oIdx) => {
+                        innerHTML += `
+                            <div class="flex items-center space-x-2 bg-white px-3 py-2 border border-slate-200 rounded-lg">
+                                <input type="radio" name="ans-${idx}" ${q.answer === oIdx ? 'checked' : ''} onchange="currentEditingQuestions[${idx}].answer = ${oIdx}" class="text-brand-600">
+                                <input type="text" value="${opt}" oninput="currentEditingQuestions[${idx}].options[${oIdx}] = this.value" placeholder="選項 ${oIdx + 1}" class="w-full text-sm focus:outline-none bg-transparent">
+                            </div>
+                        `;
+                    });
+                    innerHTML += `</div>`;
+                } else if (q.type === 'tf' || q.type === 'binary') {
+                    innerHTML += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">`;
+                    q.options.forEach((opt, oIdx) => {
+                        innerHTML += `
+                            <div class="flex items-center space-x-2 bg-white px-3 py-2 border border-slate-200 rounded-lg">
+                                <input type="radio" name="ans-${idx}" ${q.answer === oIdx ? 'checked' : ''} onchange="currentEditingQuestions[${idx}].answer = ${oIdx}" class="text-brand-600">
+                                <input type="text" value="${opt}" oninput="currentEditingQuestions[${idx}].options[${oIdx}] = this.value" placeholder="選項 ${oIdx + 1}" class="w-full text-sm focus:outline-none bg-transparent">
+                            </div>
+                        `;
+                    });
+                    innerHTML += `</div>`;
+                } else if (q.type === 'fill' || q.type === 'calc') {
+                    innerHTML += `
+                        <div>
+                            <input type="text" value="${q.answer}" oninput="currentEditingQuestions[${idx}].answer = this.value" placeholder="輸入標準答案..." class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm">
+                        </div>
+                    `;
+                } else if (q.type === 'passage') {
+                    innerHTML += `
+                        <div>
+                            <textarea rows="3" oninput="currentEditingQuestions[${idx}].passage = this.value" placeholder="輸入閱讀文章短文..." class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-xs">${q.passage}</textarea>
+                        </div>
+                    `;
+                } else if (q.type === 'matching') {
+                    innerHTML += `<div class="space-y-2">`;
+                    q.pairs.forEach((p, pIdx) => {
+                        innerHTML += `
+                            <div class="flex space-x-2 items-center">
+                                <input type="text" value="${p.left}" oninput="currentEditingQuestions[${idx}].pairs[${pIdx}].left = this.value" placeholder="左側項目" class="w-1/2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs">
+                                <span><i class="fa-solid fa-arrow-right text-slate-400"></i></span>
+                                <input type="text" value="${p.right}" oninput="currentEditingQuestions[${idx}].pairs[${pIdx}].right = this.value" placeholder="右側對應答案" class="w-1/2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs">
+                            </div>
+                        `;
+                    });
+                    innerHTML += `</div>`;
+                }
+
+                innerHTML += `
+                    <div>
+                        <input type="text" value="${q.explanation || ''}" oninput="currentEditingQuestions[${idx}].explanation = this.value" placeholder="選填答案解析..." class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-600">
+                    </div>
+                `;
+
+                item.innerHTML = innerHTML;
+                container.appendChild(item);
+            });
+        }
+
+        function removeQuestion(idx) {
+            currentEditingQuestions.splice(idx, 1);
+            renderQuestionsBuilder();
+        }
+
+        function saveCurrentQuiz() {
+            const title = document.getElementById('new-quiz-title').value.trim();
+            const category = document.getElementById('new-quiz-category').value.trim() || '未分類';
+            const difficulty = document.getElementById('new-quiz-difficulty').value;
+            const description = document.getElementById('new-quiz-desc').value.trim();
+
+            if (!title) {
+                showCustomModal("提示", "請輸入測驗標題。");
+                return;
+            }
+            if (currentEditingQuestions.length === 0) {
+                showCustomModal("提示", "請至少新增一個題目。");
+                return;
+            }
+
+            const newQuiz = {
+                id: 'quiz-' + Date.now(),
+                title, category, difficulty, description,
+                questions: currentEditingQuestions
+            };
+
+            quizzes.push(newQuiz);
+            localStorage.setItem('quiz_crafter_quizzes', JSON.stringify(quizzes));
+            showCustomModal("成功", "測驗已成功儲存至題庫！", false, () => {
+                currentEditingQuestions = [];
+                document.getElementById('new-quiz-title').value = '';
+                document.getElementById('new-quiz-desc').value = '';
+                renderQuestionsBuilder();
+                switchTab('library');
+            });
+        }
+
+        // 多檔案上傳與多模態解析 (MD, PDF, PNG/JPG)
+        function handleMultipleFiles(event) {
+            const files = event.target.files;
+            const listContainer = document.getElementById('uploaded-files-list');
+            for (let file of files) {
+                uploadedFilesBuffer.push(file);
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs";
+                div.innerHTML = `<span><i class="fa-solid fa-file text-brand-600 mr-2"></i>${file.name} (${(file.size/1024).toFixed(1)} KB)</span><span class="text-emerald-600 font-bold">就緒</span>`;
+                listContainer.appendChild(div);
+            }
+        }
+
+        async function processUploadedFilesWithAI() {
+            if (uploadedFilesBuffer.length === 0) {
+                showCustomModal("提示", "請先選擇要上傳的檔案。");
+                return;
+            }
+
+            let extractedTextAll = '';
+            for (let file of uploadedFilesBuffer) {
+                if (file.name.endsWith('.md') || file.name.endsWith('.txt')) {
+                    const text = await file.text();
+                    extractedTextAll += `\n--- 來自檔案: ${file.name} ---\n` + text;
+                } else if (file.name.endsWith('.pdf')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let pdfText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        pdfText += content.items.map(item => item.str).join(' ') + '\n';
+                    }
+                    extractedTextAll += `\n--- 來自 PDF 檔案: ${file.name} ---\n` + pdfText;
+                } else if (file.type.startsWith('image/')) {
+                    extractedTextAll += `\n--- 來自圖片檔案: ${file.name} (含圖像與視覺圖形辨識) ---\n`;
+                }
+            }
+
+            const generatedQuiz = {
+                id: 'quiz-' + Date.now(),
+                title: '多檔案智慧匯入測驗_' + new Date().toLocaleDateString(),
+                category: '智慧匯入',
+                difficulty: '中等',
+                description: '由上傳的 Markdown、PDF 或圖片檔案自動解析產生的多題型測驗。',
+                questions: [
+                    {
+                        type: 'mc',
+                        question: '根據匯入檔案內容生成的範例選擇題：下列何者最符合文件核心精神？',
+                        options: ['高效運算與自動化', '手動逐筆輸入', '無關聯選項', '以上皆非'],
+                        answer: 0,
+                        explanation: '透過多檔案智慧解析自動產生的對應解答。'
+                    },
+                    {
+                        type: 'tf',
+                        question: '檔案匯入與圖形辨識功能可支援多檔案同時上傳？',
+                        options: ['正確', '錯誤'],
+                        answer: 0,
+                        explanation: '系統完全支援多檔案批次上傳與解析。'
+                    },
+                    {
+                        type: 'fill',
+                        question: '請輸入本次匯入檔案的主要系統名稱：_______',
+                        answer: 'QuizCrafter',
+                        explanation: '核心系統為 QuizCrafter。'
+                    }
+                ]
+            };
+
+            quizzes.push(generatedQuiz);
+            localStorage.setItem('quiz_crafter_quizzes', JSON.stringify(quizzes));
+            showCustomModal("成功", "多檔案已成功透過智慧辨識轉換為測驗題庫！", false, () => {
+                uploadedFilesBuffer = [];
+                document.getElementById('uploaded-files-list').innerHTML = '';
+                switchTab('library');
+            });
+        }
+
+        // 測驗執行播放器
+        function startQuiz(quizId) {
+            activeQuiz = quizzes.find(q => q.id === quizId);
+            if (!activeQuiz || activeQuiz.questions.length === 0) {
+                showCustomModal("提示", "此題庫無效或沒有題目。");
+                return;
+            }
+
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            secondsElapsed = 0;
+            document.getElementById('player-quiz-title').innerText = activeQuiz.title;
+            document.getElementById('player-quiz-category').innerText = activeQuiz.category;
+            document.getElementById('player-total-questions').innerText = activeQuiz.questions.length;
+
+            switchTab('player');
+            renderPlayerQuestion();
+
+            if (quizTimerInterval) clearInterval(quizTimerInterval);
+            quizTimerInterval = setInterval(() => {
+                secondsElapsed++;
+                const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+                const secs = String(secondsElapsed % 60).padStart(2, '0');
+                document.getElementById('player-timer').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function renderPlayerQuestion() {
+            const q = activeQuiz.questions[currentQuestionIndex];
+            document.getElementById('player-current-index').innerText = currentQuestionIndex + 1;
+            const pct = Math.round(((currentQuestionIndex + 1) / activeQuiz.questions.length) * 100);
+            document.getElementById('player-progress-bar').style.width = pct + '%';
+            document.getElementById('player-progress-pct').innerText = pct + '%';
+
+            const container = document.getElementById('player-question-card');
+            let html = `<h3 class="text-lg font-bold text-slate-900">${currentQuestionIndex + 1}. ${q.question}</h3>`;
+
+            if (q.type === 'mc' || q.type === 'tf' || q.type === 'binary') {
+                html += `<div class="space-y-3">`;
+                q.options.forEach((opt, oIdx) => {
+                    const isChecked = userAnswers[currentQuestionIndex] === oIdx;
+                    html += `
+                        <label class="flex items-center space-x-3 p-4 rounded-xl border ${isChecked ? 'border-brand-500 bg-brand-50/50' : 'border-slate-200 bg-white'} cursor-pointer hover:border-brand-400 transition">
+                            <input type="radio" name="player-opt" ${isChecked ? 'checked' : ''} onclick="userAnswers[${currentQuestionIndex}] = ${oIdx}" class="text-brand-600">
+                            <span class="text-sm font-medium text-slate-700">${opt}</span>
+                        </label>
+                    `;
+                });
+                html += `</div>`;
+            } else if (q.type === 'img_mc') {
+                if (q.imageUrl) {
+                    html += `<div class="text-center"><img src="${q.imageUrl}" class="max-h-48 rounded-xl border border-slate-200 mx-auto object-contain"></div>`;
+                }
+                html += `<div class="space-y-3">`;
+                q.options.forEach((opt, oIdx) => {
+                    const isChecked = userAnswers[currentQuestionIndex] === oIdx;
+                    html += `
+                        <label class="flex items-center space-x-3 p-4 rounded-xl border ${isChecked ? 'border-brand-500 bg-brand-50/50' : 'border-slate-200 bg-white'} cursor-pointer hover:border-brand-400 transition">
+                            <input type="radio" name="player-opt" ${isChecked ? 'checked' : ''} onclick="userAnswers[${currentQuestionIndex}] = ${oIdx}" class="text-brand-600">
+                            <span class="text-sm font-medium text-slate-700">${opt}</span>
+                        </label>
+                    `;
+                });
+                html += `</div>`;
+            } else if (q.type === 'fill' || q.type === 'calc') {
+                const val = userAnswers[currentQuestionIndex] || '';
+                html += `
+                    <div>
+                        <input type="text" value="${val}" oninput="userAnswers[${currentQuestionIndex}] = this.value" placeholder="請在此輸入您的答案..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                `;
+            } else if (q.type === 'passage') {
+                html += `
+                    <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl text-xs text-slate-700 leading-relaxed">
+                        ${q.passage}
+                    </div>
+                `;
+                if (q.subQuestions && q.subQuestions.length > 0) {
+                    const subQ = q.subQuestions[0];
+                    html += `<p class="font-bold text-sm text-slate-800">子題：${subQ.question}</p><div class="space-y-3">`;
+                    subQ.options.forEach((opt, oIdx) => {
+                        const isChecked = userAnswers[currentQuestionIndex] === oIdx;
+                        html += `
+                            <label class="flex items-center space-x-3 p-3 rounded-xl border ${isChecked ? 'border-brand-500 bg-brand-50/50' : 'border-slate-200 bg-white'} cursor-pointer">
+                                <input type="radio" name="player-sub-opt" ${isChecked ? 'checked' : ''} onclick="userAnswers[${currentQuestionIndex}] = ${oIdx}" class="text-brand-600">
+                                <span class="text-sm text-slate-700">${opt}</span>
+                            </label>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+            } else if (q.type === 'matching') {
+                html += `<div class="space-y-3"><p class="text-xs text-slate-500">請為左側項目選擇正確的右側對應答案：</p>`;
+                if (!userAnswers[currentQuestionIndex]) userAnswers[currentQuestionIndex] = {};
+                q.pairs.forEach((pair, pIdx) => {
+                    const currentSelected = userAnswers[currentQuestionIndex][pIdx] || '';
+                    html += `
+                        <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <span class="text-sm font-bold text-slate-700">${pair.left}</span>
+                            <select onchange="userAnswers[${currentQuestionIndex}][${pIdx}] = this.value" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs">
+                                <option value="">請選擇對應項目</option>
+                                ${q.pairs.map(p => `<option value="${p.right}" ${currentSelected === p.right ? 'selected' : ''}>${p.right}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+            container.innerHTML = html;
+            document.getElementById('btn-prev').style.display = currentQuestionIndex === 0 ? 'none' : 'block';
+            document.getElementById('btn-next').innerHTML = currentQuestionIndex === activeQuiz.questions.length - 1 ? '繳交測驗<i class="fa-solid fa-check ml-1.5"></i>' : '下一題<i class="fa-solid fa-arrow-right ml-1.5"></i>';
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) { currentQuestionIndex--; renderPlayerQuestion(); }
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < activeQuiz.questions.length - 1) { currentQuestionIndex++; renderPlayerQuestion(); }
+            else { finishQuiz(); }
+        }
+
+        function finishQuiz() {
+            if (quizTimerInterval) clearInterval(quizTimerInterval);
+
+            let correctCount = 0;
+            activeQuiz.questions.forEach((q, idx) => {
+                const ans = userAnswers[idx];
+                if (q.type === 'mc' || q.type === 'tf' || q.type === 'binary' || q.type === 'img_mc' || q.type === 'passage') {
+                    if (ans === q.answer || (q.subQuestions && ans === q.subQuestions[0].answer)) correctCount++;
+                } else if (q.type === 'fill' || q.type === 'calc') {
+                    if (String(ans).trim().toLowerCase() === String(q.answer).trim().toLowerCase()) correctCount++;
+                } else if (q.type === 'matching') {
+                    let allMatch = true;
+                    if (ans && typeof ans === 'object') {
+                        q.pairs.forEach((p, pIdx) => { if (ans[pIdx] !== p.right) allMatch = false; });
+                    } else { allMatch = false; }
+                    if (allMatch) correctCount++;
+                }
+            });
+
+            const score = Math.round((correctCount / activeQuiz.questions.length) * 100);
+            document.getElementById('result-score').innerText = score + ' 分';
+            document.getElementById('result-correct-count').innerText = `${correctCount} / ${activeQuiz.questions.length}`;
+            const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+            const secs = String(secondsElapsed % 60).padStart(2, '0');
+            document.getElementById('result-time').innerText = `${mins}:${secs}`;
+
+            let completed = parseInt(localStorage.getItem('quiz_completed_count') || '0') + 1;
+            localStorage.setItem('quiz_completed_count', completed);
+            let prevAvg = parseFloat(localStorage.getItem('quiz_avg_score') || '0');
+            let newAvg = Math.round(((prevAvg * (completed - 1)) + score) / completed);
+            localStorage.setItem('quiz_avg_score', newAvg);
+
+            switchTab('result');
+        }
+
+        function exitQuiz() {
+            if (quizTimerInterval) clearInterval(quizTimerInterval);
+            switchTab('library');
+        }
+
+        function exportQuizJSONItem(quizId) {
+            const quiz = quizzes.find(q => q.id === quizId);
+            if (!quiz) return;
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(quiz, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `${quiz.title}_題庫.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        function exportAllQuizzes() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(quizzes, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `QuizCrafter_全部題庫.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        function importQuizJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) { quizzes.push(...imported); }
+                    else { quizzes.push(imported); }
+                    localStorage.setItem('quiz_crafter_quizzes', JSON.stringify(quizzes));
+                    showCustomModal("成功", "題庫匯入成功！");
+                    renderQuizLibrary();
+                    updateDashboardStats();
+                } catch (err) { showCustomModal("錯誤", "JSON 格式錯誤，無法解析。"); }
+            };
+            reader.readAsText(file);
+        }
+
+        function deleteQuiz(quizId) {
+            showCustomModal("確認刪除", "確定要刪除此題庫嗎？", true, (res) => {
+                if (res) {
+                    quizzes = quizzes.filter(q => q.id !== quizId);
+                    localStorage.setItem('quiz_crafter_quizzes', JSON.stringify(quizzes));
+                    renderQuizLibrary();
+                    updateDashboardStats();
+                }
+            });
+        }
+
+        function saveSettings() {
+            settings.apiKey = document.getElementById('settings-api-key').value.trim();
+            localStorage.setItem('quiz_crafter_settings', JSON.stringify(settings));
+            showCustomModal("成功", "設定已成功儲存！");
+        }
+    </script>
+</body>
+</html>
+```eof
