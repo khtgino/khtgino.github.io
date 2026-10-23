@@ -36,7 +36,6 @@
             display: flex;
             justify-content: flex-start;
             align-items: flex-start;
-            touch-action: pan-x pan-y pinch-zoom;
         }
 
         #pdfContainer {
@@ -83,7 +82,7 @@
             position: absolute;
             background: transparent;
             border: none;
-            border-bottom: 1px dashed #3b82f6;
+            border-bottom: 1.5px dashed #3b82f6;
             color: #1e3a8a;
             font-size: 13px;
             font-family: 'Noto Sans TC', sans-serif;
@@ -91,16 +90,16 @@
             padding: 0px 2px;
             border-radius: 0;
             pointer-events: auto;
-            min-width: 24px;
-            min-height: 14px;
+            min-width: 30px;
+            min-height: 16px;
             resize: none;
             outline: none;
-            line-height: 1.0;
+            line-height: 1.1;
             z-index: 30;
         }
         .type-input:focus {
             border-bottom: 2px solid #2563eb;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.85);
         }
 
         /* 上次錯題黃色高亮遮罩 */
@@ -147,11 +146,11 @@
         </div>
 
         <div class="flex items-center gap-2 shrink-0">
-            <button id="btnExitExam" onclick="showExitConfirmModal()" class="hidden px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100 border border-slate-200 text-xs md:text-sm font-bold transition flex items-center gap-1.5 cursor-pointer">
+            <button id="btnExitExam" onclick="showExitConfirmModal()" class="hidden px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100 border border-slate-200 text-xs md:text-sm font-bold transition flex items-center gap-1.5">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i>
                 <span>退出</span>
             </button>
-            <button id="btnFinish" onclick="showSubmitConfirmModal()" class="hidden px-3.5 py-2 md:px-5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs md:text-sm shadow-md transition flex items-center gap-1.5 cursor-pointer">
+            <button id="btnFinish" onclick="showSubmitConfirmModal()" class="hidden px-3.5 py-2 md:px-5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs md:text-sm shadow-md transition flex items-center gap-1.5">
                 <i class="fa-solid fa-robot"></i>
                 <span>交卷</span>
             </button>
@@ -170,10 +169,10 @@
                         <h2 class="text-2xl font-bold text-slate-800">準備開始測驗</h2>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="openHistoryModal()" class="px-3 py-2 rounded-xl text-indigo-600 bg-indigo-50 hover:bg-indigo-100 text-sm font-bold transition flex items-center gap-1.5 cursor-pointer">
+                        <button onclick="openHistoryModal()" class="px-3 py-2 rounded-xl text-indigo-600 bg-indigo-50 hover:bg-indigo-100 text-sm font-bold transition flex items-center gap-1.5">
                             <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden sm:inline">歷史</span>
                         </button>
-                        <button onclick="openSettingsModal()" class="px-3 py-2 rounded-xl text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-sm font-bold transition flex items-center gap-1.5 cursor-pointer">
+                        <button onclick="openSettingsModal()" class="px-3 py-2 rounded-xl text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-sm font-bold transition flex items-center gap-1.5">
                             <i class="fa-solid fa-gear"></i> <span class="hidden sm:inline">設定</span>
                         </button>
                     </div>
@@ -234,39 +233,44 @@
         <div id="pdfToolbar" class="hidden absolute top-20 left-4 z-30 bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-2xl shadow-xl flex flex-col gap-2 transition-all duration-200 select-none">
             <div class="flex items-center justify-between pb-1 border-b border-slate-200 cursor-move" id="toolbarDragHandle" title="按住此處可拖曳工具列">
                 <span class="text-[10px] font-bold text-slate-400 px-1 flex items-center gap-1"><i class="fa-solid fa-grip-dots-vertical"></i> 工具列</span>
-                <button onclick="toggleToolbarMinimize()" class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs transition cursor-pointer"><i class="fa-solid fa-compress" id="toolbarMinimizeIcon"></i></button>
+                <button onclick="toggleToolbarMinimize()" class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs transition"><i class="fa-solid fa-compress" id="toolbarMinimizeIcon"></i></button>
             </div>
             <div id="toolbarContent" class="flex flex-col gap-2">
-                <button onclick="setTool('pan')" id="tool-pan" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1 transition tool-active cursor-pointer">
+                <button onclick="setTool('pan')" id="tool-pan" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1 transition tool-active">
                     <i class="fa-solid fa-hand text-lg"></i>
                     <span class="text-[9px] font-bold">滑動</span>
                 </button>
                 <hr class="border-slate-200 mx-2">
-                <button onclick="setTool('pen', '#1e293b')" id="tool-pen-black" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 flex flex-col items-center justify-center gap-1 transition cursor-pointer">
+                <button onclick="setTool('pen', '#1e293b')" id="tool-pen-black" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 flex flex-col items-center justify-center gap-1 transition">
                     <i class="fa-solid fa-pen text-lg"></i>
                     <span class="text-[9px] font-bold">黑筆</span>
                 </button>
-                <button onclick="setTool('pen', '#2563eb')" id="tool-pen-blue" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 flex flex-col items-center justify-center gap-1 transition cursor-pointer">
+                <button onclick="setTool('pen', '#2563eb')" id="tool-pen-blue" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 flex flex-col items-center justify-center gap-1 transition">
                     <i class="fa-solid fa-pen text-lg"></i>
                     <span class="text-[9px] font-bold">藍筆</span>
                 </button>
-                <button onclick="setTool('pen', '#ef4444')" id="tool-pen-red" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 flex flex-col items-center justify-center gap-1 transition cursor-pointer">
+                <button onclick="setTool('pen', '#ef4444')" id="tool-pen-red" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 flex flex-col items-center justify-center gap-1 transition">
                     <i class="fa-solid fa-pen text-lg"></i>
                     <span class="text-[9px] font-bold">紅筆</span>
                 </button>
                 <hr class="border-slate-200 mx-2">
-                <button onclick="setTool('text')" id="tool-text" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 flex flex-col items-center justify-center gap-1 transition cursor-pointer">
+                <button onclick="setTool('text')" id="tool-text" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 flex flex-col items-center justify-center gap-1 transition">
                     <i class="fa-solid fa-t text-lg"></i>
                     <span class="text-[9px] font-bold">打字</span>
                 </button>
-                <button onclick="setTool('eraser')" id="tool-eraser" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-400 hover:bg-slate-100 flex flex-col items-center justify-center gap-1 transition cursor-pointer">
+                <button onclick="setTool('eraser')" id="tool-eraser" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-400 hover:bg-slate-100 flex flex-col items-center justify-center gap-1 transition">
                     <i class="fa-solid fa-eraser text-lg"></i>
                     <span class="text-[9px] font-bold">橡皮擦</span>
                 </button>
+                <hr class="border-slate-200 mx-2">
+                <button onclick="setTool('hint')" id="tool-hint" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-purple-600 hover:bg-purple-50 flex flex-col items-center justify-center gap-1 transition">
+                    <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                    <span class="text-[9px] font-bold">AI提示</span>
+                </button>
                 
                 <div class="flex flex-col gap-1 mt-2 p-1 bg-slate-100 rounded-xl">
-                    <button onclick="changeZoom(0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition cursor-pointer"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-                    <button onclick="changeZoom(-0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition cursor-pointer"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                    <button onclick="changeZoom(0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                    <button onclick="changeZoom(-0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
                 </div>
             </div>
         </div>
@@ -329,13 +333,13 @@
             </div>
 
             <div class="p-4 border-t border-slate-100 bg-slate-50 shrink-0 flex flex-wrap gap-3">
-                <button onclick="downloadResultPDF()" class="flex-1 min-w-[120px] py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 no-print cursor-pointer">
+                <button onclick="downloadResultPDF()" class="flex-1 min-w-[120px] py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 no-print">
                     <i class="fa-solid fa-file-arrow-down"></i> 下載成績單PDF
                 </button>
-                <button onclick="retryExam()" class="flex-1 min-w-[120px] py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 no-print cursor-pointer">
+                <button onclick="retryExam()" class="flex-1 min-w-[120px] py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 no-print">
                     <i class="fa-solid fa-rotate-right"></i> 再考一次
                 </button>
-                <button onclick="resetToHome()" class="flex-1 min-w-[120px] py-3 bg-slate-600 hover:bg-slate-700 text-white font-bold rounded-xl text-sm shadow-md transition no-print cursor-pointer">
+                <button onclick="resetToHome()" class="flex-1 min-w-[120px] py-3 bg-slate-600 hover:bg-slate-700 text-white font-bold rounded-xl text-sm shadow-md transition no-print">
                     完成並換考卷
                 </button>
             </div>
@@ -349,17 +353,16 @@
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-gear text-slate-600"></i> 設定 Gemini API Key
                 </h3>
-                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 text-xl cursor-pointer"><i class="fa-solid fa-times"></i></button>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 text-xl"><i class="fa-solid fa-times"></i></button>
             </div>
             <div>
                 <label class="block text-sm font-bold text-slate-700 mb-1">API Key</label>
-                <!-- type="password" to hide key contents -->
-                <input type="password" id="apiKeyInput" placeholder="請輸入 API Key..." class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 font-medium text-sm">
+                <input type="text" id="apiKeyInput" placeholder="AIza..." class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 font-medium text-sm">
                 <p class="text-xs text-slate-500 mt-1">系統內建預設金鑰，您也可以在此輸入您自己的金鑰。</p>
             </div>
             <div class="flex gap-3 pt-2">
-                <button onclick="closeSettingsModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition cursor-pointer">取消</button>
-                <button onclick="saveSettings()" class="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition cursor-pointer">儲存設定</button>
+                <button onclick="closeSettingsModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">取消</button>
+                <button onclick="saveSettings()" class="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition">儲存設定</button>
             </div>
         </div>
     </div>
@@ -371,7 +374,7 @@
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> 歷史考試紀錄
                 </h3>
-                <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-600 text-xl cursor-pointer"><i class="fa-solid fa-times"></i></button>
+                <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-600 text-xl"><i class="fa-solid fa-times"></i></button>
             </div>
             <div class="p-0 flex-1 overflow-y-auto custom-scroll">
                 <table class="w-full text-left text-sm text-slate-600">
@@ -398,8 +401,8 @@
             <h3 id="confirmTitle" class="text-xl font-bold text-slate-800">確認提示</h3>
             <p id="confirmMessage" class="text-sm text-slate-600 leading-relaxed">確定要執行此操作嗎？</p>
             <div class="flex gap-3 pt-2">
-                <button id="confirmCancelBtn" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition cursor-pointer">取消</button>
-                <button id="confirmOkBtn" class="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition cursor-pointer">確定</button>
+                <button id="confirmCancelBtn" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">取消</button>
+                <button id="confirmOkBtn" class="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition">確定</button>
             </div>
         </div>
     </div>
@@ -412,12 +415,12 @@
             </div>
             <h3 id="alertTitle" class="text-xl font-bold text-slate-800">提示</h3>
             <p id="alertMessage" class="text-sm text-slate-600 leading-relaxed"></p>
-            <button onclick="closeAlertModal()" class="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition cursor-pointer">確定</button>
+            <button onclick="closeAlertModal()" class="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition">確定</button>
         </div>
     </div>
 
     <script>
-        const DEFAULT_API_KEY = "AQ.Ab8RN6KXmfplgN2uAKuVlEGeJ3GYbJjK0WgW_Viv9cVz39gC8g";
+        const DEFAULT_API_KEY = "AIzaSyDu2fzwAJpuQRzioV6-7zd-o8jRiPbYAPk";
         let examPdfDoc = null, answerPdfDoc = null;
         let examPdfBytes = null;
         let studentName = "";
@@ -602,11 +605,13 @@
                 setupPageDrawing(drawCanvas, textLayer, pageDiv);
             }
 
+            // 若有上次錯題紀錄，加上黃色標記
             applyWrongHighlights();
         }
 
         function applyWrongHighlights() {
             if (!lastWrongQuestions || lastWrongQuestions.length === 0) return;
+            // 示範在頁面上加入錯題提醒框
             const pages = document.querySelectorAll('.pdf-page-container');
             if (pages.length > 0) {
                 const highlight = document.createElement('div');
@@ -640,19 +645,20 @@
                     createTextInput(e, textLayer, pageDiv);
                     return;
                 }
-                if (currentTool === 'pan') return;
+                if (currentTool === 'pan' || currentTool === 'hint') return;
                 isDrawing = true;
                 const pos = getPos(e);
                 lastX = pos.x; lastY = pos.y;
             });
 
             drawCanvas.addEventListener('mousemove', (e) => {
-                if (!isDrawing || currentTool === 'pan' || currentTool === 'text') return;
+                if (!isDrawing || currentTool === 'pan' || currentTool === 'text' || currentTool === 'hint') return;
                 const pos = getPos(e);
                 ctx.beginPath();
                 ctx.moveTo(lastX, lastY);
                 ctx.lineTo(pos.x, pos.y);
                 if (currentTool === 'eraser') {
+                    ctx.strokeStyle = 'rgba(0,0,0,1)';
                     ctx.globalCompositeOperation = 'destination-out';
                     ctx.lineWidth = 25;
                 } else {
@@ -675,7 +681,7 @@
                         createTextInput(e, textLayer, pageDiv);
                         return;
                     }
-                    if (currentTool === 'pan') return;
+                    if (currentTool === 'pan' || currentTool === 'hint') return;
                     isDrawing = true;
                     const pos = getPos(e);
                     lastX = pos.x; lastY = pos.y;
@@ -683,7 +689,7 @@
             }, { passive: true });
 
             drawCanvas.addEventListener('touchmove', (e) => {
-                if (!isDrawing || e.touches.length > 1 || currentTool === 'pan' || currentTool === 'text') return;
+                if (!isDrawing || e.touches.length > 1 || currentTool === 'pan' || currentTool === 'text' || currentTool === 'hint') return;
                 const pos = getPos(e);
                 ctx.beginPath();
                 ctx.moveTo(lastX, lastY);
@@ -717,7 +723,7 @@
             input.className = 'type-input';
             input.style.left = `${x}px`;
             input.style.top = `${y}px`;
-            input.placeholder = "輸入答案";
+            input.placeholder = "請輸入答案";
 
             textLayer.appendChild(input);
             input.focus();
@@ -736,6 +742,7 @@
             if (tool === 'pan') document.getElementById('tool-pan').classList.add('tool-active');
             if (tool === 'text') document.getElementById('tool-text').classList.add('tool-active');
             if (tool === 'eraser') document.getElementById('tool-eraser').classList.add('tool-active');
+            if (tool === 'hint') document.getElementById('tool-hint').classList.add('tool-active');
             if (tool === 'pen') {
                 if (color === '#1e293b') document.getElementById('tool-pen-black').classList.add('tool-active');
                 if (color === '#2563eb') document.getElementById('tool-pen-blue').classList.add('tool-active');
@@ -824,13 +831,14 @@
                     tCtx.drawImage(canvas, 0, 0);
                     tCtx.drawImage(drawCanvas, 0, 0);
 
+                    // 同時把打字輸入框的文字繪製到圖片上
                     const inputs = pageDiv.querySelectorAll('.type-input');
-                    tCtx.font = "bold 16px 'Noto Sans TC', sans-serif";
+                    tCtx.font = "bold 20px 'Noto Sans TC', sans-serif";
                     tCtx.fillStyle = "#1e3a8a";
                     inputs.forEach(inp => {
                         const left = parseFloat(inp.style.left);
                         const top = parseFloat(inp.style.top);
-                        tCtx.fillText(inp.value, left, top + 16);
+                        tCtx.fillText(inp.value, left, top + 20);
                     });
 
                     pageImages.push(tempCanvas.toDataURL('image/jpeg', 0.8));
@@ -852,8 +860,7 @@
                     }
                 }
 
-                const promptText = `你是一位國小資深優良老師。請以繁體中文全面批改這份學生的考卷影像（包含是非題、選擇題、填空、複雜的連連看與打勾題等）。
-請仔細檢查學生在考卷上的手寫筆跡與打字填空，並針對「每一題」（無論答對或答錯）都列出詳細的答案與解析。
+                const promptText = `你是一位國小資深優良老師。請以繁體中文批改這份學生的考卷影像（包含是非題、選擇題、填空、連連看與打勾題等）。
 請嚴格輸出符合以下 JSON 格式的內容，不要包含額外的 Markdown 標記，直接輸出純 JSON 字串：
 {
   "score": 85,
@@ -864,7 +871,7 @@
       "correct": true,
       "studentAnswer": "①",
       "rightAnswer": "①",
-      "analysis": "詳細解析說明..."
+      "analysis": "解答正確..."
     }
   ],
   "wrongIds": [5, 9]
@@ -905,6 +912,7 @@
             document.getElementById('resultDuration').innerText = document.getElementById('timerDisplay').innerText;
             document.getElementById('aiFeedbackText').innerText = result.feedback;
 
+            // 記錄本次錯題供再考一次高亮使用
             lastWrongQuestions = result.wrongIds || [];
 
             const container = document.getElementById('allQuestionsContainer');
@@ -933,6 +941,7 @@
                 container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">無詳細題號解析資料</p>';
             }
 
+            // 儲存至歷史紀錄
             saveHistory(result.score);
             document.getElementById('resultModal').classList.remove('hidden');
         }
@@ -975,6 +984,7 @@
 
         function retryExam() {
             document.getElementById('resultModal').classList.add('hidden');
+            // 保留錯題標記，重新渲染
             startExam();
         }
 
