@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>小朋友 AI 視覺 PDF 測驗系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- PDF.js for rendering PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', 'Fredoka', sans-serif;
+            background-color: #f1f5f9;
+            overscroll-behavior-y: none;
+        }
+        
+        .custom-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 5px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 5px; }
+        
+        .tool-active { background-color: #3b82f6 !important; color: white !important; border-color: #2563eb !important; }
+
+        #pdfScrollWrapper {
+            position: relative;
+            overflow: auto;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+        }
+
+        #pdfContainer {
+            transform-origin: 0 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .pdf-page-container {
+            position: relative;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            display: block;
+        }
+
+        .pdf-canvas { display: block; width: 100%; height: auto; }
+        
+        .drawing-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            touch-action: none;
+            z-index: 10;
+        }
+
+        .text-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        /* 極致透明打字輸入框，不遮擋題目文字 */
+        .type-input {
+            position: absolute;
+            background: transparent;
+            border: none;
+            border-bottom: 1.5px dashed #3b82f6;
+            color: #1e3a8a;
+            font-size: 13px;
+            font-family: 'Noto Sans TC', sans-serif;
+            font-weight: 600;
+            padding: 0px 2px;
+            border-radius: 0;
+            pointer-events: auto;
+            min-width: 30px;
+            min-height: 16px;
+            resize: none;
+            outline: none;
+            line-height: 1.1;
+            z-index: 30;
+        }
+        .type-input:focus {
+            border-bottom: 2px solid #2563eb;
+            background: rgba(255, 255, 255, 0.85);
+        }
+
+        /* 上次錯題黃色高亮遮罩 */
+        .wrong-highlight {
+            position: absolute;
+            background-color: rgba(253, 224, 71, 0.45);
+            border: 2px dashed #eab308;
+            z-index: 15;
+            pointer-events: none;
+            border-radius: 4px;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6;
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @media print {
+            body * { visibility: hidden; }
+            #resultModal, #resultModal * { visibility: visible; }
+            #resultModal { position: absolute; left: 0; top: 0; width: 100%; background: white; max-height: none; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800 select-none">
+
+    <header class="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-30 relative">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-blue-500 flex items-center justify-center text-white text-xl font-bold shadow-md shrink-0">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <div>
+                <h1 class="text-base md:text-lg font-bold text-slate-800 leading-tight">AI 視覺考試系統</h1>
+                <p id="headerStudentInfo" class="text-xs text-slate-500">Gemini 3.6 Flash 智慧批改</p>
+            </div>
+        </div>
+
+        <div id="timerContainer" class="hidden flex items-center gap-2 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-full shrink-0">
+            <i class="fa-solid fa-clock text-rose-500 animate-pulse"></i>
+            <span id="timerDisplay" class="font-mono font-bold text-rose-600 text-base md:text-lg tracking-wider">00:00</span>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+            <button id="btnExitExam" onclick="showExitConfirmModal()" class="hidden px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100 border border-slate-200 text-xs md:text-sm font-bold transition flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <span>退出</span>
+            </button>
+            <button id="btnFinish" onclick="showSubmitConfirmModal()" class="hidden px-3.5 py-2 md:px-5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs md:text-sm shadow-md transition flex items-center gap-1.5">
+                <i class="fa-solid fa-robot"></i>
+                <span>交卷</span>
+            </button>
+        </div>
+    </header>
+
+    <div id="appContainer" class="flex-1 flex overflow-hidden relative bg-slate-200">
+        
+        <div id="setupScreen" class="absolute inset-0 bg-slate-100 z-40 flex items-start justify-center p-4 overflow-y-auto custom-scroll">
+            <div class="max-w-2xl w-full bg-white rounded-3xl shadow-xl border border-slate-200 p-6 md:p-8 my-auto">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 mb-3">
+                            <i class="fa-solid fa-file-signature text-2xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-800">準備開始測驗</h2>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openHistoryModal()" class="px-3 py-2 rounded-xl text-indigo-600 bg-indigo-50 hover:bg-indigo-100 text-sm font-bold transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden sm:inline">歷史</span>
+                        </button>
+                        <button onclick="openSettingsModal()" class="px-3 py-2 rounded-xl text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-sm font-bold transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-gear"></i> <span class="hidden sm:inline">設定</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-5">
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col md:flex-row gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-bold text-slate-700 mb-1">學生姓名</label>
+                            <input type="text" id="inputStudentName" placeholder="例如：王小明" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 font-medium">
+                        </div>
+                        <div class="w-full md:w-32">
+                            <label class="block text-sm font-bold text-slate-700 mb-1">考試時間</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="inputDuration" value="30" min="1" max="180" class="w-20 px-3 py-2.5 rounded-xl border border-slate-300 text-center font-bold focus:outline-none focus:border-blue-500">
+                                <span class="text-sm text-slate-500 font-medium">分</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Exam File (Required) -->
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                            <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                <i class="fa-regular fa-file-pdf text-rose-500"></i> 1. 學生考卷 (PDF) <span class="text-rose-500 text-xs">*必填</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-5 border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-xl cursor-pointer bg-white transition group">
+                                <i class="fa-solid fa-cloud-arrow-up text-blue-400 group-hover:text-blue-600 text-3xl mb-2 transition"></i>
+                                <span class="text-sm font-bold text-slate-600">選擇考卷 PDF</span>
+                                <input type="file" id="examFileInput" accept="application/pdf" class="hidden" onchange="handleExamFile(event)">
+                            </label>
+                            <p id="examFileName" class="text-xs text-blue-600 font-semibold mt-2 truncate text-center h-4"></p>
+                        </div>
+
+                        <!-- Answer File (Optional) -->
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                            <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-key text-amber-500"></i> 2. 老師解答卷 (PDF) <span class="text-slate-400 text-xs">(選填)</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-5 border-2 border-dashed border-amber-300 hover:border-amber-500 rounded-xl cursor-pointer bg-white transition group">
+                                <i class="fa-solid fa-cloud-arrow-up text-amber-400 group-hover:text-amber-600 text-3xl mb-2 transition"></i>
+                                <span class="text-sm font-bold text-slate-600">選擇解答 PDF (可不填)</span>
+                                <input type="file" id="answerFileInput" accept="application/pdf" class="hidden" onchange="handleAnswerFile(event)">
+                            </label>
+                            <p id="answerFileName" class="text-xs text-amber-600 font-semibold mt-2 truncate text-center h-4"></p>
+                        </div>
+                    </div>
+
+                    <button id="btnStartExam" onclick="startExam()" disabled class="w-full py-4 bg-slate-300 text-slate-500 font-bold rounded-2xl shadow-sm transition text-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play"></i>
+                        <span>進入考場</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 可拖曳與縮小的浮動工具列 -->
+        <div id="pdfToolbar" class="hidden absolute top-20 left-4 z-30 bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-2xl shadow-xl flex flex-col gap-2 transition-all duration-200 select-none">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-200 cursor-move" id="toolbarDragHandle" title="按住此處可拖曳工具列">
+                <span class="text-[10px] font-bold text-slate-400 px-1 flex items-center gap-1"><i class="fa-solid fa-grip-dots-vertical"></i> 工具列</span>
+                <button onclick="toggleToolbarMinimize()" class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs transition"><i class="fa-solid fa-compress" id="toolbarMinimizeIcon"></i></button>
+            </div>
+            <div id="toolbarContent" class="flex flex-col gap-2">
+                <button onclick="setTool('pan')" id="tool-pan" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1 transition tool-active">
+                    <i class="fa-solid fa-hand text-lg"></i>
+                    <span class="text-[9px] font-bold">滑動</span>
+                </button>
+                <hr class="border-slate-200 mx-2">
+                <button onclick="setTool('pen', '#1e293b')" id="tool-pen-black" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 flex flex-col items-center justify-center gap-1 transition">
+                    <i class="fa-solid fa-pen text-lg"></i>
+                    <span class="text-[9px] font-bold">黑筆</span>
+                </button>
+                <button onclick="setTool('pen', '#2563eb')" id="tool-pen-blue" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 flex flex-col items-center justify-center gap-1 transition">
+                    <i class="fa-solid fa-pen text-lg"></i>
+                    <span class="text-[9px] font-bold">藍筆</span>
+                </button>
+                <button onclick="setTool('pen', '#ef4444')" id="tool-pen-red" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 flex flex-col items-center justify-center gap-1 transition">
+                    <i class="fa-solid fa-pen text-lg"></i>
+                    <span class="text-[9px] font-bold">紅筆</span>
+                </button>
+                <hr class="border-slate-200 mx-2">
+                <button onclick="setTool('text')" id="tool-text" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 flex flex-col items-center justify-center gap-1 transition">
+                    <i class="fa-solid fa-t text-lg"></i>
+                    <span class="text-[9px] font-bold">打字</span>
+                </button>
+                <button onclick="setTool('eraser')" id="tool-eraser" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-400 hover:bg-slate-100 flex flex-col items-center justify-center gap-1 transition">
+                    <i class="fa-solid fa-eraser text-lg"></i>
+                    <span class="text-[9px] font-bold">橡皮擦</span>
+                </button>
+                <hr class="border-slate-200 mx-2">
+                <button onclick="setTool('hint')" id="tool-hint" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-purple-600 hover:bg-purple-50 flex flex-col items-center justify-center gap-1 transition">
+                    <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                    <span class="text-[9px] font-bold">AI提示</span>
+                </button>
+                
+                <div class="flex flex-col gap-1 mt-2 p-1 bg-slate-100 rounded-xl">
+                    <button onclick="changeZoom(0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                    <button onclick="changeZoom(-0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div id="pdfScrollWrapper">
+            <div id="pdfContainer">
+                <!-- PDF Pages -->
+            </div>
+        </div>
+
+    </div>
+
+    <div id="processingOverlay" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex flex-col items-center justify-center text-white p-4">
+        <div class="loader mb-4"></div>
+        <h3 class="text-2xl font-bold mb-2">AI 老師批改中 (Gemini 3.6 Flash)...</h3>
+        <p class="text-slate-300 text-sm mb-4 text-center">正在透過視覺模型深度分析考卷（包含連連看與勾選題），請稍候</p>
+        <div class="w-64 bg-slate-800 rounded-full h-2 mb-2">
+            <div class="bg-blue-500 h-2 rounded-full animate-pulse" style="width: 100%"></div>
+        </div>
+    </div>
+
+    <!-- RESULT MODAL -->
+    <div id="resultModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="max-w-4xl w-full max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
+            <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-center text-white relative shrink-0">
+                <div class="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto mb-2 text-3xl shadow-inner">
+                    🏆
+                </div>
+                <h3 class="text-2xl font-bold">批改完成！</h3>
+                <p class="text-blue-100 text-sm mt-1" id="resultModalStudentName"></p>
+            </div>
+
+            <div class="p-6 flex-1 overflow-y-auto custom-scroll flex flex-col gap-5">
+                <div class="flex gap-4">
+                    <div class="flex-1 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">本次得分</span>
+                        <div class="text-5xl font-black text-blue-600"><span id="resultScore">0</span> <span class="text-xl text-slate-400 font-normal">/ 100</span></div>
+                    </div>
+                    <div class="flex-1 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center flex flex-col justify-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">測驗耗時</span>
+                        <div class="text-3xl font-bold text-slate-700" id="resultDuration">00:00</div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-sm text-slate-700 leading-relaxed">
+                    <div class="flex items-center justify-between border-b border-blue-200 pb-2 mb-2">
+                        <p class="font-bold flex items-center gap-2 text-blue-800">
+                            <i class="fa-solid fa-robot"></i> AI 老師總評：
+                        </p>
+                    </div>
+                    <div id="aiFeedbackText" class="whitespace-pre-wrap font-medium">評估中...</div>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-blue-600"></i> 每題詳細解析與作答列表
+                    </h4>
+                    <div id="allQuestionsContainer" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50 shrink-0 flex flex-wrap gap-3">
+                <button onclick="downloadResultPDF()" class="flex-1 min-w-[120px] py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 no-print">
+                    <i class="fa-solid fa-file-arrow-down"></i> 下載成績單PDF
+                </button>
+                <button onclick="retryExam()" class="flex-1 min-w-[120px] py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2 no-print">
+                    <i class="fa-solid fa-rotate-right"></i> 再考一次
+                </button>
+                <button onclick="resetToHome()" class="flex-1 min-w-[120px] py-3 bg-slate-600 hover:bg-slate-700 text-white font-bold rounded-xl text-sm shadow-md transition no-print">
+                    完成並換考卷
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-slate-600"></i> 設定 Gemini API Key
+                </h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 text-xl"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">API Key</label>
+                <input type="text" id="apiKeyInput" placeholder="AIza..." class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 font-medium text-sm">
+                <p class="text-xs text-slate-500 mt-1">系統內建預設金鑰，您也可以在此輸入您自己的金鑰。</p>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button onclick="closeSettingsModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">取消</button>
+                <button onclick="saveSettings()" class="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition">儲存設定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTORY MODAL -->
+    <div id="historyModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="max-w-2xl w-full max-h-[80vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> 歷史考試紀錄
+                </h3>
+                <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-600 text-xl"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-0 flex-1 overflow-y-auto custom-scroll">
+                <table class="w-full text-left text-sm text-slate-600">
+                    <thead class="bg-slate-100 text-slate-500 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-3 font-bold">日期</th>
+                            <th class="px-4 py-3 font-bold">學生</th>
+                            <th class="px-4 py-3 font-bold text-center">分數</th>
+                            <th class="px-4 py-3 font-bold">耗時</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRM MODAL -->
+    <div id="customConfirmModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[250] flex items-center justify-center p-4">
+        <div class="max-w-sm w-full bg-white rounded-3xl p-6 shadow-2xl text-center space-y-4">
+            <div id="confirmIcon" class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="confirmTitle" class="text-xl font-bold text-slate-800">確認提示</h3>
+            <p id="confirmMessage" class="text-sm text-slate-600 leading-relaxed">確定要執行此操作嗎？</p>
+            <div class="flex gap-3 pt-2">
+                <button id="confirmCancelBtn" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">取消</button>
+                <button id="confirmOkBtn" class="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM ALERT MODAL -->
+    <div id="customAlertModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
+        <div class="max-w-sm w-full bg-white rounded-3xl p-6 shadow-2xl text-center space-y-4">
+            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <h3 id="alertTitle" class="text-xl font-bold text-slate-800">提示</h3>
+            <p id="alertMessage" class="text-sm text-slate-600 leading-relaxed"></p>
+            <button onclick="closeAlertModal()" class="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition">確定</button>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_API_KEY = "AIzaSyDu2fzwAJpuQRzioV6-7zd-o8jRiPbYAPk";
+        let examPdfDoc = null, answerPdfDoc = null;
+        let examPdfBytes = null;
+        let studentName = "";
+        let durationMinutes = 30;
+        let timerInterval = null, timeLeft = 0;
+        let currentTool = 'pan';
+        let currentPenColor = '#1e293b';
+        let currentZoom = 1.0;
+        let lastWrongQuestions = []; // 存儲上次答錯的題目編號或位置
+
+        function getApiKey() {
+            let key = localStorage.getItem('gemini_api_key');
+            if (!key || key.trim() === '') {
+                key = DEFAULT_API_KEY;
+                localStorage.setItem('gemini_api_key', key);
+            }
+            return key;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('apiKeyInput').value = getApiKey();
+            checkStartReady();
+            document.getElementById('inputStudentName').addEventListener('input', checkStartReady);
+            initToolbarDrag();
+        });
+
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+        function saveSettings() {
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (key) {
+                localStorage.setItem('gemini_api_key', key);
+                showAlertModal('設定已儲存！', '成功');
+                closeSettingsModal();
+            } else {
+                showAlertModal('請輸入有效的 API Key', '警告');
+            }
+        }
+
+        function showAlertModal(msg, title='提示') {
+            document.getElementById('alertTitle').innerText = title;
+            document.getElementById('alertMessage').innerText = msg;
+            document.getElementById('customAlertModal').classList.remove('hidden');
+        }
+        function closeAlertModal() {
+            document.getElementById('customAlertModal').classList.add('hidden');
+        }
+
+        function showConfirmModal(title, message, onOk) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            const modal = document.getElementById('customConfirmModal');
+            modal.classList.remove('hidden');
+            const okBtn = document.getElementById('confirmOkBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
+            
+            const newOkBtn = okBtn.cloneNode(true);
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+            newOkBtn.onclick = () => {
+                modal.classList.add('hidden');
+                onOk();
+            };
+            newCancelBtn.onclick = () => {
+                modal.classList.add('hidden');
+            };
+        }
+
+        function checkStartReady() {
+            const name = document.getElementById('inputStudentName').value.trim();
+            const btn = document.getElementById('btnStartExam');
+            if (name && examPdfBytes) {
+                btn.disabled = false;
+                btn.className = "w-full py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-2xl shadow-md transition text-lg flex items-center justify-center gap-2 cursor-pointer";
+            } else {
+                btn.disabled = true;
+                btn.className = "w-full py-4 bg-slate-300 text-slate-500 font-bold rounded-2xl shadow-sm transition text-lg flex items-center justify-center gap-2";
+            }
+        }
+
+        async function handleExamFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById('examFileName').innerText = file.name;
+            const reader = new FileReader();
+            reader.onload = async function() {
+                examPdfBytes = new Uint8Array(this.result);
+                examPdfDoc = await pdfjsLib.getDocument({ data: examPdfBytes }).promise;
+                checkStartReady();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function handleAnswerFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById('answerFileName').innerText = file.name;
+            const reader = new FileReader();
+            reader.onload = async function() {
+                const answerBytes = new Uint8Array(this.result);
+                answerPdfDoc = await pdfjsLib.getDocument({ data: answerBytes }).promise;
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function startExam() {
+            studentName = document.getElementById('inputStudentName').value.trim();
+            durationMinutes = parseInt(document.getElementById('inputDuration').value) || 30;
+            if (!studentName || !examPdfDoc) return;
+
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('pdfToolbar').classList.remove('hidden');
+            document.getElementById('btnFinish').classList.remove('hidden');
+            document.getElementById('btnExitExam').classList.remove('hidden');
+            document.getElementById('timerContainer').classList.remove('hidden');
+            document.getElementById('headerStudentInfo').innerText = `學生：${studentName}`;
+
+            await renderAllPdfPages();
+            startTimer(durationMinutes * 60);
+        }
+
+        function startTimer(seconds) {
+            timeLeft = seconds;
+            updateTimerDisplay();
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    showAlertModal('考試時間到！系統將自動交卷。', '時間到');
+                    submitExam();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const s = (timeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('timerDisplay').innerText = `${m}:${s}`;
+        }
+
+        async function renderAllPdfPages() {
+            const container = document.getElementById('pdfContainer');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= examPdfDoc.numPages; i++) {
+                const page = await examPdfDoc.getPage(i);
+                const viewport = page.getViewport({ scale: 1.5 });
+
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'pdf-page-container';
+                pageDiv.style.width = `${viewport.width}px`;
+                pageDiv.style.height = `${viewport.height}px`;
+
+                const canvas = document.createElement('canvas');
+                canvas.className = 'pdf-canvas';
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const ctx = canvas.getContext('2d');
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                const drawCanvas = document.createElement('canvas');
+                drawCanvas.className = 'drawing-canvas';
+                drawCanvas.width = viewport.width;
+                drawCanvas.height = viewport.height;
+
+                const textLayer = document.createElement('div');
+                textLayer.className = 'text-layer';
+
+                pageDiv.appendChild(canvas);
+                pageDiv.appendChild(drawCanvas);
+                pageDiv.appendChild(textLayer);
+                container.appendChild(pageDiv);
+
+                setupPageDrawing(drawCanvas, textLayer, pageDiv);
+            }
+
+            // 若有上次錯題紀錄，加上黃色標記
+            applyWrongHighlights();
+        }
+
+        function applyWrongHighlights() {
+            if (!lastWrongQuestions || lastWrongQuestions.length === 0) return;
+            // 示範在頁面上加入錯題提醒框
+            const pages = document.querySelectorAll('.pdf-page-container');
+            if (pages.length > 0) {
+                const highlight = document.createElement('div');
+                highlight.className = 'wrong-highlight';
+                highlight.style.top = '100px';
+                highlight.style.left = '50px';
+                highlight.style.width = '300px';
+                highlight.style.height = '60px';
+                highlight.title = "上次此題答錯過，請特別留意！";
+                pages[0].appendChild(highlight);
+            }
+        }
+
+        function setupPageDrawing(drawCanvas, textLayer, pageDiv) {
+            const ctx = drawCanvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0, lastY = 0;
+
+            function getPos(e) {
+                const rect = drawCanvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: (clientX - rect.left) * (drawCanvas.width / rect.width),
+                    y: (clientY - rect.top) * (drawCanvas.height / rect.height)
+                };
+            }
+
+            drawCanvas.addEventListener('mousedown', (e) => {
+                if (currentTool === 'text') {
+                    createTextInput(e, textLayer, pageDiv);
+                    return;
+                }
+                if (currentTool === 'pan' || currentTool === 'hint') return;
+                isDrawing = true;
+                const pos = getPos(e);
+                lastX = pos.x; lastY = pos.y;
+            });
+
+            drawCanvas.addEventListener('mousemove', (e) => {
+                if (!isDrawing || currentTool === 'pan' || currentTool === 'text' || currentTool === 'hint') return;
+                const pos = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                if (currentTool === 'eraser') {
+                    ctx.strokeStyle = 'rgba(0,0,0,1)';
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.lineWidth = 25;
+                } else {
+                    ctx.strokeStyle = currentPenColor;
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.lineWidth = 3;
+                }
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+                lastX = pos.x; lastY = pos.y;
+            });
+
+            drawCanvas.addEventListener('mouseup', () => { isDrawing = false; });
+            drawCanvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+            drawCanvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    if (currentTool === 'text') {
+                        createTextInput(e, textLayer, pageDiv);
+                        return;
+                    }
+                    if (currentTool === 'pan' || currentTool === 'hint') return;
+                    isDrawing = true;
+                    const pos = getPos(e);
+                    lastX = pos.x; lastY = pos.y;
+                }
+            }, { passive: true });
+
+            drawCanvas.addEventListener('touchmove', (e) => {
+                if (!isDrawing || e.touches.length > 1 || currentTool === 'pan' || currentTool === 'text' || currentTool === 'hint') return;
+                const pos = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                if (currentTool === 'eraser') {
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.lineWidth = 25;
+                } else {
+                    ctx.strokeStyle = currentPenColor;
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.lineWidth = 3;
+                }
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+                lastX = pos.x; lastY = pos.y;
+            }, { passive: true });
+
+            drawCanvas.addEventListener('touchend', () => { isDrawing = false; });
+        }
+
+        function createTextInput(e, textLayer, pageDiv) {
+            const rect = pageDiv.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            const input = document.createElement('textarea');
+            input.className = 'type-input';
+            input.style.left = `${x}px`;
+            input.style.top = `${y}px`;
+            input.placeholder = "請輸入答案";
+
+            textLayer.appendChild(input);
+            input.focus();
+
+            input.addEventListener('blur', () => {
+                if (input.value.trim() === '') {
+                    input.remove();
+                }
+            });
+        }
+
+        function setTool(tool, color = null) {
+            currentTool = tool;
+            if (color) currentPenColor = color;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('tool-active'));
+            if (tool === 'pan') document.getElementById('tool-pan').classList.add('tool-active');
+            if (tool === 'text') document.getElementById('tool-text').classList.add('tool-active');
+            if (tool === 'eraser') document.getElementById('tool-eraser').classList.add('tool-active');
+            if (tool === 'hint') document.getElementById('tool-hint').classList.add('tool-active');
+            if (tool === 'pen') {
+                if (color === '#1e293b') document.getElementById('tool-pen-black').classList.add('tool-active');
+                if (color === '#2563eb') document.getElementById('tool-pen-blue').classList.add('tool-active');
+                if (color === '#ef4444') document.getElementById('tool-pen-red').classList.add('tool-active');
+            }
+        }
+
+        function changeZoom(delta) {
+            currentZoom = Math.min(Math.max(currentZoom + delta, 0.6), 2.5);
+            const container = document.getElementById('pdfContainer');
+            container.style.transform = `scale(${currentZoom})`;
+        }
+
+        function initToolbarDrag() {
+            const toolbar = document.getElementById('pdfToolbar');
+            const handle = document.getElementById('toolbarDragHandle');
+            let isDragging = false, startX, startY, initialX, initialY;
+
+            handle.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+
+            handle.addEventListener('touchstart', dragStart, { passive: true });
+            document.addEventListener('touchmove', drag, { passive: true });
+            document.addEventListener('touchend', dragEnd);
+
+            function dragStart(e) {
+                isDragging = true;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                startX = clientX; startY = clientY;
+                initialX = toolbar.offsetLeft; initialY = toolbar.offsetTop;
+            }
+
+            function drag(e) {
+                if (!isDragging) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+                toolbar.style.left = `${initialX + dx}px`;
+                toolbar.style.top = `${initialY + dy}px`;
+            }
+
+            function dragEnd() { isDragging = false; }
+        }
+
+        function toggleToolbarMinimize() {
+            const content = document.getElementById('toolbarContent');
+            const icon = document.getElementById('toolbarMinimizeIcon');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.className = "fa-solid fa-compress";
+            } else {
+                content.classList.add('hidden');
+                icon.className = "fa-solid fa-expand";
+            }
+        }
+
+        function showExitConfirmModal() {
+            showConfirmModal("確認退出", "確定要退出目前考試嗎？作答進度將不會被保存。", () => {
+                resetToHome();
+            });
+        }
+
+        function showSubmitConfirmModal() {
+            showConfirmModal("確認交卷", "確定要交卷並請 AI 老師批改嗎？", () => {
+                submitExam();
+            });
+        }
+
+        async function submitExam() {
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('processingOverlay').classList.remove('hidden');
+
+            try {
+                const pages = document.querySelectorAll('.pdf-page-container');
+                const pageImages = [];
+                for (let pageDiv of pages) {
+                    const canvas = pageDiv.querySelector('.pdf-canvas');
+                    const drawCanvas = pageDiv.querySelector('.drawing-canvas');
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = canvas.width;
+                    tempCanvas.height = canvas.height;
+                    const tCtx = tempCanvas.getContext('2d');
+                    tCtx.drawImage(canvas, 0, 0);
+                    tCtx.drawImage(drawCanvas, 0, 0);
+
+                    // 同時把打字輸入框的文字繪製到圖片上
+                    const inputs = pageDiv.querySelectorAll('.type-input');
+                    tCtx.font = "bold 20px 'Noto Sans TC', sans-serif";
+                    tCtx.fillStyle = "#1e3a8a";
+                    inputs.forEach(inp => {
+                        const left = parseFloat(inp.style.left);
+                        const top = parseFloat(inp.style.top);
+                        tCtx.fillText(inp.value, left, top + 20);
+                    });
+
+                    pageImages.push(tempCanvas.toDataURL('image/jpeg', 0.8));
+                }
+
+                const apiKey = getApiKey();
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+                let answerImages = [];
+                if (answerPdfDoc) {
+                    for (let i = 1; i <= answerPdfDoc.numPages; i++) {
+                        const page = await answerPdfDoc.getPage(i);
+                        const viewport = page.getViewport({ scale: 1.2 });
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+                        answerImages.push(canvas.toDataURL('image/jpeg', 0.8));
+                    }
+                }
+
+                const promptText = `你是一位國小資深優良老師。請以繁體中文批改這份學生的考卷影像（包含是非題、選擇題、填空、連連看與打勾題等）。
+請嚴格輸出符合以下 JSON 格式的內容，不要包含額外的 Markdown 標記，直接輸出純 JSON 字串：
+{
+  "score": 85,
+  "feedback": "老師給學生的總體鼓勵與評語（繁體中文）",
+  "questions": [
+    {
+      "id": 1,
+      "correct": true,
+      "studentAnswer": "①",
+      "rightAnswer": "①",
+      "analysis": "解答正確..."
+    }
+  ],
+  "wrongIds": [5, 9]
+}`;
+
+                const contentsPart = [
+                    { text: promptText },
+                    ...pageImages.map(img => ({
+                        inline_data: { mime_type: "image/jpeg", data: img.split(',')[1] }
+                    }))
+                ];
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: contentsPart }] })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                const rawText = data.candidates[0].content.parts[0].text;
+                const cleanJsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const result = JSON.parse(cleanJsonStr);
+
+                document.getElementById('processingOverlay').classList.add('hidden');
+                displayResult(result);
+
+            } catch (err) {
+                document.getElementById('processingOverlay').classList.add('hidden');
+                showAlertModal("批改失敗：" + err.message, "錯誤");
+            }
+        }
+
+        function displayResult(result) {
+            document.getElementById('resultModalStudentName').innerText = `學生：${studentName}`;
+            document.getElementById('resultScore').innerText = result.score;
+            document.getElementById('resultDuration').innerText = document.getElementById('timerDisplay').innerText;
+            document.getElementById('aiFeedbackText').innerText = result.feedback;
+
+            // 記錄本次錯題供再考一次高亮使用
+            lastWrongQuestions = result.wrongIds || [];
+
+            const container = document.getElementById('allQuestionsContainer');
+            container.innerHTML = '';
+
+            if (result.questions && result.questions.length > 0) {
+                result.questions.forEach(q => {
+                    const card = document.createElement('div');
+                    card.className = `p-4 rounded-2xl border ${q.correct ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'} flex items-start gap-3`;
+                    card.innerHTML = `
+                        <div class="w-8 h-8 rounded-full ${q.correct ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'} flex items-center justify-center shrink-0 font-bold text-sm">
+                            ${q.correct ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>'}
+                        </div>
+                        <div class="flex-1 text-sm">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-slate-800">第 ${q.id} 題</span>
+                                <span class="text-xs font-semibold ${q.correct ? 'text-emerald-600' : 'text-rose-600'}">${q.correct ? '答對' : '答錯'}</span>
+                            </div>
+                            <p class="text-slate-600 mb-1">學生作答：<span class="font-semibold text-slate-800">${q.studentAnswer || '無'}</span> | 正確答案：<span class="font-semibold text-emerald-700">${q.rightAnswer}</span></p>
+                            <p class="text-xs text-slate-500 bg-white/60 p-2 rounded-xl border border-slate-200/50">解析：${q.analysis}</p>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } else {
+                container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">無詳細題號解析資料</p>';
+            }
+
+            // 儲存至歷史紀錄
+            saveHistory(result.score);
+            document.getElementById('resultModal').classList.remove('hidden');
+        }
+
+        function saveHistory(score) {
+            const history = JSON.parse(localStorage.getItem('exam_history') || '[]');
+            history.unshift({
+                date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                student: studentName,
+                score: score,
+                duration: document.getElementById('timerDisplay').innerText
+            });
+            localStorage.setItem('exam_history', JSON.stringify(history.slice(0, 20)));
+        }
+
+        function openHistoryModal() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+            const history = JSON.parse(localStorage.getItem('exam_history') || '[]');
+            if (history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">尚無歷史考試紀錄</td></tr>';
+            } else {
+                history.forEach(h => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-medium">${h.date}</td>
+                        <td class="px-4 py-3 font-bold text-slate-800">${h.student}</td>
+                        <td class="px-4 py-3 text-center font-black text-blue-600">${h.score}分</td>
+                        <td class="px-4 py-3 text-slate-500 font-mono">${h.duration}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            document.getElementById('historyModal').classList.remove('hidden');
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+        }
+
+        function retryExam() {
+            document.getElementById('resultModal').classList.add('hidden');
+            // 保留錯題標記，重新渲染
+            startExam();
+        }
+
+        function resetToHome() {
+            document.getElementById('resultModal').classList.add('hidden');
+            document.getElementById('pdfToolbar').classList.add('hidden');
+            document.getElementById('btnFinish').classList.add('hidden');
+            document.getElementById('btnExitExam').classList.add('hidden');
+            document.getElementById('timerContainer').classList.add('hidden');
+            document.getElementById('setupScreen').classList.remove('hidden');
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('pdfContainer').innerHTML = '';
+            examPdfBytes = null;
+            examPdfDoc = null;
+            answerPdfDoc = null;
+            document.getElementById('examFileName').innerText = '';
+            document.getElementById('answerFileName').innerText = '';
+            document.getElementById('inputStudentName').value = '';
+            checkStartReady();
+        }
+
+        function downloadResultPDF() {
+            window.print();
+        }
+    </script>
+</body>
+</html>
