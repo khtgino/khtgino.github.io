@@ -98,9 +98,9 @@
         <section id="tab-dashboard" class="tab-content active animate-fade-in space-y-8">
             <div class="bg-gradient-to-r from-brand-600 to-indigo-700 text-white p-6 sm:p-10 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div class="space-y-3 max-w-2xl">
-                    <span class="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Gemini 3.5 FLASH Powered</span>
+                    <span class="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Gemini 3.5 Flash Lite Powered</span>
                     <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">QuizCrafter 專業題庫大師</h1>
-                    <p class="text-indigo-100 text-sm sm:text-base">搭載 Gemini 3.5 FLASH智慧模型，完美解析 PDF 考卷、選擇題、是非題與配分比例。</p>
+                    <p class="text-indigo-100 text-sm sm:text-base">搭載 Gemini 3.5 Flash Lite 模型，支援多考卷自動分割解析與多題型結構化轉換。</p>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                     <button onclick="switchTab('builder')" class="bg-white text-brand-700 hover:bg-indigo-50 font-semibold px-6 py-3 rounded-xl shadow-md transition flex items-center justify-center">
@@ -181,14 +181,14 @@
         <section id="tab-builder" class="tab-content animate-fade-in space-y-6">
             <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
                 <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-indigo-900 space-y-2">
-                    <h4 class="font-bold text-base"><i class="fa-solid fa-wand-magic-sparkles mr-2 text-indigo-600"></i>Gemini 3.5 API 考卷智慧解析</h4>
-                    <p class="text-xs text-indigo-700 leading-relaxed">請確認您已在「設定」頁面填入正確的 API Key。上傳您的 PDF 考卷或圖片後，系統會透過 Gemini 3.5 模型深度解析考卷中的題型、題目內容與配分。</p>
+                    <h4 class="font-bold text-base"><i class="fa-solid fa-wand-magic-sparkles mr-2 text-indigo-600"></i>Gemini 3.5 Flash Lite 智慧解析與多考卷自動分割</h4>
+                    <p class="text-xs text-indigo-700 leading-relaxed">請確認您已在「設定」頁面填入正確的 API Key。上傳 PDF 考卷後，若檔案內含多份考卷或不同單元，系統會自動將其拆分為多個獨立題庫匯入。</p>
                 </div>
 
                 <div class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-10 text-center cursor-pointer transition bg-slate-50" onclick="document.getElementById('multi-file-input').click()">
                     <i class="fa-solid fa-file-arrow-up text-4xl text-brand-500 mb-3"></i>
                     <p class="text-sm font-bold text-slate-700">點擊或拖曳 PDF 考卷 / 圖片至此處上傳</p>
-                    <p class="text-xs text-slate-400 mt-1">支援 .pdf, .png, .jpg, .jpeg</p>
+                    <p class="text-xs text-slate-400 mt-1">支援 .pdf, .png, .jpg, .jpeg (支援多檔案批次上傳)</p>
                     <input type="file" id="multi-file-input" multiple accept=".pdf,.png,.jpg,.jpeg" class="hidden" onchange="handleMultipleFiles(event)">
                 </div>
 
@@ -196,7 +196,7 @@
 
                 <div class="flex justify-end pt-4 border-t border-slate-100">
                     <button onclick="processUploadedFilesWithGeminiAPI()" id="btn-process-files" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md transition flex items-center space-x-2">
-                        <i class="fa-solid fa-brain"></i><span>使用 Gemini 3.5 開始解析考卷</span>
+                        <i class="fa-solid fa-brain"></i><span>使用 Gemini 3.5 Flash Lite 解析並自動分割題庫</span>
                     </button>
                 </div>
             </div>
@@ -301,7 +301,7 @@
 
     <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
         <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
-            QuizCrafter Web Application &copy; 2026 | Powered by Gemini 3.5 API
+            QuizCrafter Web Application &copy; 2026 | Powered by Gemini 3.5 Flash Lite API
         </div>
     </footer>
 
@@ -431,7 +431,7 @@
             }
         }
 
-        // 使用 Gemini 3.5 API 進行真實解析
+        // 使用 Gemini 3.5 Flash Lite API 進行真實解析，支援單份或多份考卷自動分割
         async function processUploadedFilesWithGeminiAPI() {
             if (!settings.apiKey) {
                 showCustomModal("缺少 API Key", "請先至「設定」頁面填入您的 Google Gemini API Key。");
@@ -445,7 +445,7 @@
             }
 
             const btn = document.getElementById('btn-process-files');
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i>正在透過 Gemini 3.5 分析考卷中...`;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i>正在透過 Gemini 3.5 Flash Lite 解析與分割考卷中...`;
             btn.disabled = true;
 
             let extractedTextAll = '';
@@ -466,35 +466,15 @@
                     }
                 }
 
-                const prompt = `你是一個專業的教育測驗與考卷分析專家。請閱讀以下從考卷提取的文字內容，精準萃取出所有的試題、題型與配分資訊。
-請嚴格回傳一個合法的 JSON 物件（不要包含任何 markdown 程式碼區塊標記如 \`\`\`json，直接回傳純 JSON 字串），格式如下：
-{
-  "title": "考卷標題 (例如: 社會五上第一單元)",
-  "category": "學科領域 (例如: 社會領域)",
-  "difficulty": "中等",
-  "description": "由上傳考卷自動解析",
-  "questions": [
-    {
-      "type": "mc",
-      "question": "題目文字",
-      "options": ["選項1", "選項2", "選項3", "選項4"],
-      "answer": 0,
-      "explanation": "解析"
-    },
-    {
-      "type": "tf",
-      "question": "是非題文字",
-      "options": ["正確", "錯誤"],
-      "answer": 0,
-      "explanation": "解析"
-    }
-  ]
-}
+                const prompt = `你是一個專業的教育測驗與考卷分析專家。請閱讀以下從檔案提取的文字內容。
+如果內容中包含多份不同的考卷、單元或試卷，請將它們分別獨立拆分為多個題庫物件。
+請嚴格回傳一個合法的 JSON 陣列（格式範例：[ { "title": "考卷一", "category": "領域", "difficulty": "中等", "description": "說明", "questions": [...] }, { "title": "考卷二", ... } ]），若只有一份也請包在陣列中。不要包含任何 markdown 程式碼區塊標記如 \`\`\`json，直接回傳純 JSON 字串。
+每道題目需包含 type（mc、tf、fill 等）、question、options、answer 與 explanation。
 
-以下是考卷內容：
+以下是檔案內容：
 ${extractedTextAll}`;
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${settings.apiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${settings.apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -509,17 +489,20 @@ ${extractedTextAll}`;
 
                 const rawText = data.candidates[0].content.parts[0].text;
                 const cleanJsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-                const parsedQuiz = JSON.parse(cleanJsonStr);
+                const parsedData = JSON.parse(cleanJsonStr);
 
-                parsedQuiz.id = 'quiz-' + Date.now();
-                if (!parsedQuiz.questions || parsedQuiz.questions.length === 0) {
-                    throw new Error('未能從中解析出有效題目');
-                }
+                let newQuizzes = Array.isArray(parsedData) ? parsedData : [parsedData];
+                newQuizzes.forEach((q, idx) => {
+                    q.id = 'quiz-' + Date.now() + '-' + idx;
+                    if (!q.questions || q.questions.length === 0) {
+                        throw new Error('未能從中解析出有效題目');
+                    }
+                });
 
-                quizzes.push(parsedQuiz);
+                quizzes.push(...newQuizzes);
                 localStorage.setItem('quiz_crafter_quizzes', JSON.stringify(quizzes));
 
-                showCustomModal("解析成功", `Gemini 3.5 API 已成功為您解析考卷，共產生 ${parsedQuiz.questions.length} 道試題！`, false, () => {
+                showCustomModal("解析成功", `Gemini 3.5 Flash Lite 已成功解析並為您自動分割出 ${newQuizzes.length} 個獨立題庫！`, false, () => {
                     uploadedFilesBuffer = [];
                     document.getElementById('uploaded-files-list').innerHTML = '';
                     switchTab('library');
@@ -527,9 +510,9 @@ ${extractedTextAll}`;
 
             } catch (err) {
                 console.error('Gemini 解析錯誤:', err);
-                showCustomModal("解析失敗", "Gemini 3.5 API 處理時發生錯誤：" + err.message);
+                showCustomModal("解析失敗", "Gemini 3.5 Flash Lite 處理時發生錯誤：" + err.message);
             } finally {
-                btn.innerHTML = `<i class="fa-solid fa-brain mr-2"></i><span>使用 Gemini 3.5 開始解析考卷</span>`;
+                btn.innerHTML = `<i class="fa-solid fa-brain mr-2"></i><span>使用 Gemini 3.5 Flash Lite 解析並自動分割題庫</span>`;
                 btn.disabled = false;
             }
         }
