@@ -19,7 +19,8 @@
         body {
             font-family: 'Noto Sans TC', 'Fredoka', sans-serif;
             background-color: #f1f5f9;
-            overscroll-behavior-y: none;
+            overscroll-behavior: none;
+            touch-action: pan-x pan-y;
         }
         
         .custom-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -33,9 +34,8 @@
             overflow: auto;
             width: 100%;
             height: 100%;
-            display: flex;
-            justify-content: flex-start;
-            align-items: flex-start;
+            touch-action: pan-x pan-y;
+            -webkit-overflow-scrolling: touch;
         }
 
         #pdfContainer {
@@ -47,6 +47,7 @@
             position: absolute;
             top: 0;
             left: 0;
+            transition: transform 0.05s ease-out;
         }
 
         .pdf-page-container {
@@ -77,39 +78,45 @@
             pointer-events: none;
         }
 
-        /* 極致透明打字輸入框，不遮擋題目文字 */
+        /* 打字輸入框 */
         .type-input {
             position: absolute;
-            background: transparent;
-            border: none;
-            border-bottom: 1.5px dashed #3b82f6;
+            background: rgba(255, 255, 255, 0.75);
+            border: 1.5px dashed #3b82f6;
             color: #1e3a8a;
-            font-size: 13px;
+            font-size: 15px;
             font-family: 'Noto Sans TC', sans-serif;
-            font-weight: 600;
-            padding: 0px 2px;
-            border-radius: 0;
+            font-weight: 700;
+            padding: 2px 4px;
+            border-radius: 4px;
             pointer-events: auto;
-            min-width: 30px;
-            min-height: 16px;
-            resize: none;
+            min-width: 40px;
+            min-height: 24px;
+            resize: both;
             outline: none;
-            line-height: 1.1;
+            line-height: 1.2;
             z-index: 30;
         }
         .type-input:focus {
-            border-bottom: 2px solid #2563eb;
-            background: rgba(255, 255, 255, 0.85);
+            border: 2px solid #2563eb;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
         }
 
-        /* 上次錯題黃色高亮遮罩 */
+        /* 錯題高亮遮罩 */
         .wrong-highlight {
             position: absolute;
-            background-color: rgba(253, 224, 71, 0.45);
+            background-color: rgba(253, 224, 71, 0.4);
             border: 2px dashed #eab308;
             z-index: 15;
             pointer-events: none;
-            border-radius: 4px;
+            border-radius: 6px;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: #eab308; }
+            50% { border-color: #ca8a04; }
         }
 
         .loader {
@@ -135,8 +142,8 @@
                 <i class="fa-solid fa-graduation-cap"></i>
             </div>
             <div>
-                <h1 class="text-base md:text-lg font-bold text-slate-800 leading-tight">AI 視覺考試系統</h1>
-                <p id="headerStudentInfo" class="text-xs text-slate-500">Gemini 3.6 Flash 智慧批改</p>
+                <h1 class="text-base md:text-lg font-bold text-slate-800 leading-tight">小朋友 AI 視覺測驗系統</h1>
+                <p id="headerAiInfo" class="text-xs text-slate-500">AI 智慧批改中</p>
             </div>
         </div>
 
@@ -159,6 +166,7 @@
 
     <div id="appContainer" class="flex-1 flex overflow-hidden relative bg-slate-200">
         
+        <!-- Setup Screen -->
         <div id="setupScreen" class="absolute inset-0 bg-slate-100 z-40 flex items-start justify-center p-4 overflow-y-auto custom-scroll">
             <div class="max-w-2xl w-full bg-white rounded-3xl shadow-xl border border-slate-200 p-6 md:p-8 my-auto">
                 <div class="flex justify-between items-start mb-6">
@@ -173,7 +181,7 @@
                             <i class="fa-solid fa-clock-rotate-left"></i> <span class="hidden sm:inline">歷史</span>
                         </button>
                         <button onclick="openSettingsModal()" class="px-3 py-2 rounded-xl text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-sm font-bold transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-gear"></i> <span class="hidden sm:inline">設定</span>
+                            <i class="fa-solid fa-gear"></i> <span class="hidden sm:inline">AI 設定</span>
                         </button>
                     </div>
                 </div>
@@ -181,7 +189,7 @@
                 <div class="space-y-5">
                     <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col md:flex-row gap-4">
                         <div class="flex-1">
-                            <label class="block text-sm font-bold text-slate-700 mb-1">學生姓名</label>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">學生姓名 <span class="text-xs text-slate-400 font-normal">(選填，預設為同學)</span></label>
                             <input type="text" id="inputStudentName" placeholder="例如：王小明" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 font-medium">
                         </div>
                         <div class="w-full md:w-32">
@@ -197,7 +205,7 @@
                         <!-- Exam File (Required) -->
                         <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                             <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                <i class="fa-regular fa-file-pdf text-rose-500"></i> 1. 學生考卷 (PDF) <span class="text-rose-500 text-xs">*必填</span>
+                                <i class="fa-regular fa-file-pdf text-rose-500"></i>1. 學生考卷 (PDF) <span class="text-rose-500 text-xs">*必填</span>
                             </label>
                             <label class="flex flex-col items-center justify-center p-5 border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-xl cursor-pointer bg-white transition group">
                                 <i class="fa-solid fa-cloud-arrow-up text-blue-400 group-hover:text-blue-600 text-3xl mb-2 transition"></i>
@@ -214,29 +222,29 @@
                             </label>
                             <label class="flex flex-col items-center justify-center p-5 border-2 border-dashed border-amber-300 hover:border-amber-500 rounded-xl cursor-pointer bg-white transition group">
                                 <i class="fa-solid fa-cloud-arrow-up text-amber-400 group-hover:text-amber-600 text-3xl mb-2 transition"></i>
-                                <span class="text-sm font-bold text-slate-600">選擇解答 PDF (可不填)</span>
+                                <span class="text-sm font-bold text-slate-600">選擇解答 PDF (推薦提供)</span>
                                 <input type="file" id="answerFileInput" accept="application/pdf" class="hidden" onchange="handleAnswerFile(event)">
                             </label>
                             <p id="answerFileName" class="text-xs text-amber-600 font-semibold mt-2 truncate text-center h-4"></p>
                         </div>
                     </div>
 
-                    <button id="btnStartExam" onclick="startExam()" disabled class="w-full py-4 bg-slate-300 text-slate-500 font-bold rounded-2xl shadow-sm transition text-lg flex items-center justify-center gap-2">
+                    <button id="btnStartExam" onclick="startExam()" disabled class="w-full py-4 bg-slate-300 text-slate-500 font-bold rounded-2xl shadow-sm transition text-lg flex items-center justify-center gap-2 cursor-not-allowed">
                         <i class="fa-solid fa-play"></i>
-                        <span>進入考場</span>
+                        <span>請先選擇考卷 PDF</span>
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- 可拖曳與縮小的浮動工具列 -->
+        <!-- 可拖曳工具列 -->
         <div id="pdfToolbar" class="hidden absolute top-20 left-4 z-30 bg-white/95 backdrop-blur-md border border-slate-200 p-2 rounded-2xl shadow-xl flex flex-col gap-2 transition-all duration-200 select-none">
             <div class="flex items-center justify-between pb-1 border-b border-slate-200 cursor-move" id="toolbarDragHandle" title="按住此處可拖曳工具列">
                 <span class="text-[10px] font-bold text-slate-400 px-1 flex items-center gap-1"><i class="fa-solid fa-grip-dots-vertical"></i> 工具列</span>
                 <button onclick="toggleToolbarMinimize()" class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs transition"><i class="fa-solid fa-compress" id="toolbarMinimizeIcon"></i></button>
             </div>
             <div id="toolbarContent" class="flex flex-col gap-2">
-                <button onclick="setTool('pan')" id="tool-pan" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1 transition tool-active">
+                <button onclick="setTool('pan')" id="tool-pan" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1 transition tool-active" title="單指/滑鼠拖曳移動考卷">
                     <i class="fa-solid fa-hand text-lg"></i>
                     <span class="text-[9px] font-bold">滑動</span>
                 </button>
@@ -262,19 +270,16 @@
                     <i class="fa-solid fa-eraser text-lg"></i>
                     <span class="text-[9px] font-bold">橡皮擦</span>
                 </button>
-                <hr class="border-slate-200 mx-2">
-                <button onclick="setTool('hint')" id="tool-hint" class="tool-btn w-12 h-12 rounded-xl bg-white border border-slate-200 text-purple-600 hover:bg-purple-50 flex flex-col items-center justify-center gap-1 transition">
-                    <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
-                    <span class="text-[9px] font-bold">AI提示</span>
-                </button>
                 
-                <div class="flex flex-col gap-1 mt-2 p-1 bg-slate-100 rounded-xl">
-                    <button onclick="changeZoom(0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-                    <button onclick="changeZoom(-0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                <div class="flex flex-col gap-1 mt-2 p-1 bg-slate-100 rounded-xl items-center">
+                    <button onclick="changeZoom(0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition" title="放大考卷"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                    <span id="zoomPercentDisplay" class="text-[10px] font-bold text-slate-500">100%</span>
+                    <button onclick="changeZoom(-0.2)" class="w-10 h-8 text-slate-600 hover:bg-white rounded-lg transition" title="縮小考卷"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
                 </div>
             </div>
         </div>
 
+        <!-- 考卷滾動容器 -->
         <div id="pdfScrollWrapper">
             <div id="pdfContainer">
                 <!-- PDF Pages -->
@@ -283,10 +288,12 @@
 
     </div>
 
+    <!-- 評分中遮罩（含重試狀態回饋） -->
     <div id="processingOverlay" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex flex-col items-center justify-center text-white p-4">
         <div class="loader mb-4"></div>
-        <h3 class="text-2xl font-bold mb-2">AI 老師批改中 (Gemini 3.6 Flash)...</h3>
-        <p class="text-slate-300 text-sm mb-4 text-center">正在透過視覺模型深度分析考卷（包含連連看與勾選題），請稍候</p>
+        <h3 class="text-2xl font-bold mb-2" id="processingTitle">AI 老師逐題精細批改中...</h3>
+        <p class="text-slate-300 text-sm mb-4 text-center max-w-md" id="processingDesc">正在逐頁辨識題型（含是非、選擇、填空、連連看與勾選題），並執行空白題未作答檢核，請稍候</p>
+        <div id="retryStatusText" class="hidden text-amber-300 text-xs font-semibold mb-3 bg-amber-950/60 border border-amber-500/40 px-3 py-1.5 rounded-full"></div>
         <div class="w-64 bg-slate-800 rounded-full h-2 mb-2">
             <div class="bg-blue-500 h-2 rounded-full animate-pulse" style="width: 100%"></div>
         </div>
@@ -310,8 +317,12 @@
                         <div class="text-5xl font-black text-blue-600"><span id="resultScore">0</span> <span class="text-xl text-slate-400 font-normal">/ 100</span></div>
                     </div>
                     <div class="flex-1 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center flex flex-col justify-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">答題統計</span>
+                        <div class="text-2xl font-bold text-slate-700" id="resultQuestionStats">0 / 0 題</div>
+                    </div>
+                    <div class="flex-1 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center flex flex-col justify-center">
                         <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">測驗耗時</span>
-                        <div class="text-3xl font-bold text-slate-700" id="resultDuration">00:00</div>
+                        <div class="text-2xl font-bold text-slate-700" id="resultDuration">00:00</div>
                     </div>
                 </div>
 
@@ -346,20 +357,41 @@
         </div>
     </div>
 
-    <!-- SETTINGS MODAL -->
+    <!-- AI & API SETTINGS MODAL -->
     <div id="settingsModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden p-6 space-y-4">
             <div class="flex justify-between items-center border-b border-slate-200 pb-3">
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-gear text-slate-600"></i> 設定 Gemini API Key
+                    <i class="fa-solid fa-sliders text-blue-600"></i> AI 批改引擎設定
                 </h3>
                 <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 text-xl"><i class="fa-solid fa-times"></i></button>
             </div>
+
+            <!-- 1. AI 名稱下拉選單 -->
             <div>
-                <label class="block text-sm font-bold text-slate-700 mb-1">API Key</label>
-                <input type="text" id="apiKeyInput" placeholder="AIza..." class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 font-medium text-sm">
-                <p class="text-xs text-slate-500 mt-1">系統內建預設金鑰，您也可以在此輸入您自己的金鑰。</p>
+                <label class="block text-sm font-bold text-slate-700 mb-1">1. AI 引擎平台</label>
+                <select id="aiProviderSelect" onchange="onProviderChange()" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 font-bold text-sm bg-white cursor-pointer">
+                    <option value="gemini">Google Gemini</option>
+                    <option value="openai">ChatGPT (OpenAI)</option>
+                    <option value="claude">Claude AI / Cloud AI (Anthropic)</option>
+                </select>
             </div>
+
+            <!-- 2. MODEL 下拉選單 -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">2. 模型版本 (Model)</label>
+                <select id="aiModelSelect" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 font-medium text-sm bg-white cursor-pointer">
+                </select>
+                <p class="text-xs text-slate-500 mt-1" id="modelHelpText">已更新為指定之 Flash 與 Lite 系列模型。</p>
+            </div>
+
+            <!-- 3. API KEY 輸入框 -->
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1" id="apiKeyLabel">3. API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="請在此輸入對應的 API Key" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-blue-500 font-mono text-sm">
+                <p class="text-xs text-slate-500 mt-1" id="apiKeyTip">金鑰僅存於您的本機瀏覽器中，請放心使用。</p>
+            </div>
+
             <div class="flex gap-3 pt-2">
                 <button onclick="closeSettingsModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">取消</button>
                 <button onclick="saveSettings()" class="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl text-sm shadow-sm transition">儲存設定</button>
@@ -420,7 +452,47 @@
     </div>
 
     <script>
-        const DEFAULT_API_KEY = "AIzaSyDu2fzwAJpuQRzioV6-7zd-o8jRiPbYAPk";
+        // 5. 更新 GEMINI 模型列表
+        const AI_CONFIG = {
+            gemini: {
+                name: 'Google Gemini',
+                defaultModel: 'gemini-3.6-flash',
+                keyStorageKey: 'key_gemini',
+                keyPlaceholder: 'AIzaSy...',
+                models: [
+                    { id: 'gemini-3.6-flash', name: 'gemini-3.6-flash (推薦主力版)' },
+                    { id: 'gemini-3.1-flash-lite', name: 'gemini-3.1-flash-lite' },
+                    { id: 'gemini-3.5-flash-lite', name: 'gemini-3.5-flash-lite' },
+                    { id: 'gemini-3.8-flash', name: 'gemini-3.8-flash (最新版)' },
+                    { id: 'gemini-3.8-live-extended-thinking', name: 'gemini-3.8-live-extended-thinking (思考型)' }
+                ]
+            },
+            openai: {
+                name: 'ChatGPT (OpenAI)',
+                defaultModel: 'gpt-4o-mini',
+                keyStorageKey: 'key_openai',
+                keyPlaceholder: 'sk-proj-...',
+                models: [
+                    { id: 'gpt-4o', name: 'GPT-4o (旗艦全能視覺)' },
+                    { id: 'gpt-4o-mini', name: 'GPT-4o Mini (經濟快速推薦)' },
+                    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo (高解析視覺)' },
+                    { id: 'o1', name: 'o1 (深度推理模型)' }
+                ]
+            },
+            claude: {
+                name: 'Claude AI / Cloud AI',
+                defaultModel: 'claude-3-5-sonnet-20241022',
+                keyStorageKey: 'key_claude',
+                keyPlaceholder: 'sk-ant-api...',
+                models: [
+                    { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (最強試卷推理)' },
+                    { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (極速輕量)' },
+                    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus (多頁深度解析)' }
+                ]
+            }
+        };
+
+        const DEFAULT_GEMINI_KEY = "AIzaSyDu2fzwAJpuQRzioV6-7zd-o8jRiPbYAPk";
         let examPdfDoc = null, answerPdfDoc = null;
         let examPdfBytes = null;
         let studentName = "";
@@ -429,39 +501,110 @@
         let currentTool = 'pan';
         let currentPenColor = '#1e293b';
         let currentZoom = 1.0;
-        let lastWrongQuestions = []; // 存儲上次答錯的題目編號或位置
+        let lastWrongQuestions = [];
 
-        function getApiKey() {
-            let key = localStorage.getItem('gemini_api_key');
-            if (!key || key.trim() === '') {
-                key = DEFAULT_API_KEY;
-                localStorage.setItem('gemini_api_key', key);
+        // 兩指手勢全域變數
+        let touchStartDist = 0;
+        let touchStartZoom = 1.0;
+        let touchStartPan = { x: 0, y: 0 };
+        let touchStartScroll = { left: 0, top: 0 };
+        let isTwoFingerGesture = false;
+
+        function getSavedProvider() {
+            return localStorage.getItem('selected_ai_provider') || 'gemini';
+        }
+        function getSavedModel(provider) {
+            return localStorage.getItem('selected_ai_model_' + provider) || AI_CONFIG[provider].defaultModel;
+        }
+        function getSavedApiKey(provider) {
+            let key = localStorage.getItem(AI_CONFIG[provider].keyStorageKey);
+            if (!key && provider === 'gemini') {
+                key = DEFAULT_GEMINI_KEY;
             }
-            return key;
+            return key || '';
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('apiKeyInput').value = getApiKey();
+            initAiConfigUI();
             checkStartReady();
-            document.getElementById('inputStudentName').addEventListener('input', checkStartReady);
+            const nameInput = document.getElementById('inputStudentName');
+            if (nameInput) nameInput.addEventListener('input', checkStartReady);
             initToolbarDrag();
+            initPanScroll();
+            initTwoFingerPinch();
+            updateHeaderAiInfo();
         });
 
+        function updateHeaderAiInfo() {
+            const provider = getSavedProvider();
+            const model = getSavedModel(provider);
+            const providerObj = AI_CONFIG[provider] || AI_CONFIG.gemini;
+            document.getElementById('headerAiInfo').innerText = `${providerObj.name} (${model}) 智慧批改`;
+        }
+
+        function initAiConfigUI() {
+            const provider = getSavedProvider();
+            document.getElementById('aiProviderSelect').value = provider;
+            populateModels(provider);
+            document.getElementById('aiModelSelect').value = getSavedModel(provider);
+            document.getElementById('apiKeyInput').value = getSavedApiKey(provider);
+            updateApiKeyUI(provider);
+        }
+
+        function onProviderChange() {
+            const provider = document.getElementById('aiProviderSelect').value;
+            populateModels(provider);
+            document.getElementById('aiModelSelect').value = getSavedModel(provider);
+            document.getElementById('apiKeyInput').value = getSavedApiKey(provider);
+            updateApiKeyUI(provider);
+        }
+
+        function populateModels(provider) {
+            const select = document.getElementById('aiModelSelect');
+            select.innerHTML = '';
+            const conf = AI_CONFIG[provider] || AI_CONFIG.gemini;
+            conf.models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.innerText = m.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function updateApiKeyUI(provider) {
+            const conf = AI_CONFIG[provider] || AI_CONFIG.gemini;
+            document.getElementById('apiKeyLabel').innerText = `3. ${conf.name} API Key`;
+            document.getElementById('apiKeyInput').placeholder = conf.keyPlaceholder;
+            const tip = document.getElementById('apiKeyTip');
+            if (provider === 'gemini') {
+                tip.innerText = '系統已內建預設測試金鑰，您亦可填入自己的 Google API Key。';
+            } else if (provider === 'openai') {
+                tip.innerText = '請使用支援 Vision 之 OpenAI 帳號 API Key (sk-...)。';
+            } else if (provider === 'claude') {
+                tip.innerText = '請使用 Anthropic Claude API Key (sk-ant-...)。';
+            }
+        }
+
         function openSettingsModal() {
+            initAiConfigUI();
             document.getElementById('settingsModal').classList.remove('hidden');
         }
         function closeSettingsModal() {
             document.getElementById('settingsModal').classList.add('hidden');
         }
+
         function saveSettings() {
+            const provider = document.getElementById('aiProviderSelect').value;
+            const model = document.getElementById('aiModelSelect').value;
             const key = document.getElementById('apiKeyInput').value.trim();
-            if (key) {
-                localStorage.setItem('gemini_api_key', key);
-                showAlertModal('設定已儲存！', '成功');
-                closeSettingsModal();
-            } else {
-                showAlertModal('請輸入有效的 API Key', '警告');
-            }
+
+            localStorage.setItem('selected_ai_provider', provider);
+            localStorage.setItem('selected_ai_model_' + provider, model);
+            localStorage.setItem(AI_CONFIG[provider].keyStorageKey, key);
+
+            updateHeaderAiInfo();
+            showAlertModal(`已儲存：${AI_CONFIG[provider].name} [${model}]`, '成功');
+            closeSettingsModal();
         }
 
         function showAlertModal(msg, title='提示') {
@@ -496,26 +639,38 @@
         }
 
         function checkStartReady() {
-            const name = document.getElementById('inputStudentName').value.trim();
             const btn = document.getElementById('btnStartExam');
-            if (name && examPdfBytes) {
+            if (examPdfDoc) {
                 btn.disabled = false;
                 btn.className = "w-full py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-2xl shadow-md transition text-lg flex items-center justify-center gap-2 cursor-pointer";
+                btn.innerHTML = '<i class="fa-solid fa-play"></i><span>進入考場</span>';
             } else {
                 btn.disabled = true;
-                btn.className = "w-full py-4 bg-slate-300 text-slate-500 font-bold rounded-2xl shadow-sm transition text-lg flex items-center justify-center gap-2";
+                btn.className = "w-full py-4 bg-slate-300 text-slate-500 font-bold rounded-2xl shadow-sm transition text-lg flex items-center justify-center gap-2 cursor-not-allowed";
+                btn.innerHTML = '<i class="fa-solid fa-play"></i><span>請先選擇考卷 PDF</span>';
             }
         }
 
         async function handleExamFile(e) {
             const file = e.target.files[0];
             if (!file) return;
-            document.getElementById('examFileName').innerText = file.name;
+            const statusElem = document.getElementById('examFileName');
+            statusElem.innerText = `載入解析中：${file.name}...`;
+
             const reader = new FileReader();
             reader.onload = async function() {
-                examPdfBytes = new Uint8Array(this.result);
-                examPdfDoc = await pdfjsLib.getDocument({ data: examPdfBytes }).promise;
-                checkStartReady();
+                try {
+                    examPdfBytes = new Uint8Array(this.result);
+                    examPdfDoc = await pdfjsLib.getDocument({ data: examPdfBytes }).promise;
+                    statusElem.innerText = `已載入：${file.name} (共 ${examPdfDoc.numPages} 頁)`;
+                    checkStartReady();
+                } catch (err) {
+                    statusElem.innerText = "載入失敗，請確認檔案格式";
+                    showAlertModal("PDF 解析失敗：" + err.message, "錯誤");
+                    examPdfDoc = null;
+                    examPdfBytes = null;
+                    checkStartReady();
+                }
             };
             reader.readAsArrayBuffer(file);
         }
@@ -523,28 +678,41 @@
         async function handleAnswerFile(e) {
             const file = e.target.files[0];
             if (!file) return;
-            document.getElementById('answerFileName').innerText = file.name;
+            const statusElem = document.getElementById('answerFileName');
+            statusElem.innerText = `載入解析中：${file.name}...`;
+
             const reader = new FileReader();
             reader.onload = async function() {
-                const answerBytes = new Uint8Array(this.result);
-                answerPdfDoc = await pdfjsLib.getDocument({ data: answerBytes }).promise;
+                try {
+                    const answerBytes = new Uint8Array(this.result);
+                    answerPdfDoc = await pdfjsLib.getDocument({ data: answerBytes }).promise;
+                    statusElem.innerText = `已載入解答：${file.name} (共 ${answerPdfDoc.numPages} 頁)`;
+                } catch (err) {
+                    statusElem.innerText = "解答載入失敗";
+                    showAlertModal("解答 PDF 解析失敗：" + err.message, "錯誤");
+                    answerPdfDoc = null;
+                }
             };
             reader.readAsArrayBuffer(file);
         }
 
         async function startExam() {
-            studentName = document.getElementById('inputStudentName').value.trim();
+            if (!examPdfDoc) {
+                showAlertModal("請先上傳學生考卷 PDF", "提示");
+                return;
+            }
+
+            studentName = document.getElementById('inputStudentName').value.trim() || '同學';
             durationMinutes = parseInt(document.getElementById('inputDuration').value) || 30;
-            if (!studentName || !examPdfDoc) return;
 
             document.getElementById('setupScreen').classList.add('hidden');
             document.getElementById('pdfToolbar').classList.remove('hidden');
             document.getElementById('btnFinish').classList.remove('hidden');
             document.getElementById('btnExitExam').classList.remove('hidden');
             document.getElementById('timerContainer').classList.remove('hidden');
-            document.getElementById('headerStudentInfo').innerText = `學生：${studentName}`;
 
             await renderAllPdfPages();
+            setTool('pan');
             startTimer(durationMinutes * 60);
         }
 
@@ -569,6 +737,7 @@
             document.getElementById('timerDisplay').innerText = `${m}:${s}`;
         }
 
+        // 1. 渲染倍率明確固定為 1.5
         async function renderAllPdfPages() {
             const container = document.getElementById('pdfContainer');
             container.innerHTML = '';
@@ -579,6 +748,7 @@
 
                 const pageDiv = document.createElement('div');
                 pageDiv.className = 'pdf-page-container';
+                pageDiv.dataset.pageNumber = i;
                 pageDiv.style.width = `${viewport.width}px`;
                 pageDiv.style.height = `${viewport.height}px`;
 
@@ -605,22 +775,38 @@
                 setupPageDrawing(drawCanvas, textLayer, pageDiv);
             }
 
-            // 若有上次錯題紀錄，加上黃色標記
+            updateContainerBounds();
             applyWrongHighlights();
+        }
+
+        function updateContainerBounds() {
+            const container = document.getElementById('pdfContainer');
+            const pages = container.querySelectorAll('.pdf-page-container');
+            if (pages.length === 0) return;
+            let maxWidth = 0;
+            let totalHeight = 40;
+            pages.forEach(p => {
+                maxWidth = Math.max(maxWidth, parseFloat(p.style.width) || 0);
+                totalHeight += (parseFloat(p.style.height) || 0) + 30;
+            });
+            container.style.width = `${(maxWidth + 80) * currentZoom}px`;
+            container.style.height = `${(totalHeight + 80) * currentZoom}px`;
         }
 
         function applyWrongHighlights() {
             if (!lastWrongQuestions || lastWrongQuestions.length === 0) return;
-            // 示範在頁面上加入錯題提醒框
             const pages = document.querySelectorAll('.pdf-page-container');
             if (pages.length > 0) {
                 const highlight = document.createElement('div');
                 highlight.className = 'wrong-highlight';
-                highlight.style.top = '100px';
-                highlight.style.left = '50px';
-                highlight.style.width = '300px';
-                highlight.style.height = '60px';
-                highlight.title = "上次此題答錯過，請特別留意！";
+                highlight.style.top = '20px';
+                highlight.style.left = '20px';
+                highlight.style.padding = '8px 16px';
+                highlight.style.backgroundColor = 'rgba(254, 240, 138, 0.95)';
+                highlight.style.color = '#854d0e';
+                highlight.style.fontWeight = 'bold';
+                highlight.style.fontSize = '13px';
+                highlight.innerText = `⚠️ 上次測驗答錯題號：${lastWrongQuestions.join(', ')}，請特別檢查！`;
                 pages[0].appendChild(highlight);
             }
         }
@@ -645,30 +831,16 @@
                     createTextInput(e, textLayer, pageDiv);
                     return;
                 }
-                if (currentTool === 'pan' || currentTool === 'hint') return;
+                if (currentTool === 'pan') return;
                 isDrawing = true;
                 const pos = getPos(e);
                 lastX = pos.x; lastY = pos.y;
             });
 
             drawCanvas.addEventListener('mousemove', (e) => {
-                if (!isDrawing || currentTool === 'pan' || currentTool === 'text' || currentTool === 'hint') return;
+                if (!isDrawing || currentTool === 'pan' || currentTool === 'text') return;
                 const pos = getPos(e);
-                ctx.beginPath();
-                ctx.moveTo(lastX, lastY);
-                ctx.lineTo(pos.x, pos.y);
-                if (currentTool === 'eraser') {
-                    ctx.strokeStyle = 'rgba(0,0,0,1)';
-                    ctx.globalCompositeOperation = 'destination-out';
-                    ctx.lineWidth = 25;
-                } else {
-                    ctx.strokeStyle = currentPenColor;
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.lineWidth = 3;
-                }
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.stroke();
+                drawLine(ctx, lastX, lastY, pos.x, pos.y);
                 lastX = pos.x; lastY = pos.y;
             });
 
@@ -676,39 +848,51 @@
             drawCanvas.addEventListener('mouseleave', () => { isDrawing = false; });
 
             drawCanvas.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    if (currentTool === 'text') {
-                        createTextInput(e, textLayer, pageDiv);
-                        return;
-                    }
-                    if (currentTool === 'pan' || currentTool === 'hint') return;
-                    isDrawing = true;
-                    const pos = getPos(e);
-                    lastX = pos.x; lastY = pos.y;
+                if (e.touches.length > 1) {
+                    isDrawing = false;
+                    return;
                 }
+                if (currentTool === 'text') {
+                    createTextInput(e, textLayer, pageDiv);
+                    return;
+                }
+                if (currentTool === 'pan') return;
+                isDrawing = true;
+                const pos = getPos(e);
+                lastX = pos.x; lastY = pos.y;
             }, { passive: true });
 
             drawCanvas.addEventListener('touchmove', (e) => {
-                if (!isDrawing || e.touches.length > 1 || currentTool === 'pan' || currentTool === 'text' || currentTool === 'hint') return;
-                const pos = getPos(e);
-                ctx.beginPath();
-                ctx.moveTo(lastX, lastY);
-                ctx.lineTo(pos.x, pos.y);
-                if (currentTool === 'eraser') {
-                    ctx.globalCompositeOperation = 'destination-out';
-                    ctx.lineWidth = 25;
-                } else {
-                    ctx.strokeStyle = currentPenColor;
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.lineWidth = 3;
+                if (e.touches.length > 1) {
+                    isDrawing = false;
+                    return;
                 }
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.stroke();
+                if (!isDrawing || currentTool === 'pan' || currentTool === 'text') return;
+                const pos = getPos(e);
+                drawLine(ctx, lastX, lastY, pos.x, pos.y);
                 lastX = pos.x; lastY = pos.y;
             }, { passive: true });
 
             drawCanvas.addEventListener('touchend', () => { isDrawing = false; });
+            drawCanvas.addEventListener('touchcancel', () => { isDrawing = false; });
+        }
+
+        function drawLine(ctx, x1, y1, x2, y2) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            if (currentTool === 'eraser') {
+                ctx.strokeStyle = 'rgba(0,0,0,1)';
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = 32;
+            } else {
+                ctx.strokeStyle = currentPenColor;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.lineWidth = 3.5;
+            }
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
         }
 
         function createTextInput(e, textLayer, pageDiv) {
@@ -716,14 +900,14 @@
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
+            const x = (clientX - rect.left) / currentZoom;
+            const y = (clientY - rect.top) / currentZoom;
 
             const input = document.createElement('textarea');
             input.className = 'type-input';
             input.style.left = `${x}px`;
             input.style.top = `${y}px`;
-            input.placeholder = "請輸入答案";
+            input.placeholder = "輸入答案";
 
             textLayer.appendChild(input);
             input.focus();
@@ -739,21 +923,112 @@
             currentTool = tool;
             if (color) currentPenColor = color;
             document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('tool-active'));
+            
             if (tool === 'pan') document.getElementById('tool-pan').classList.add('tool-active');
             if (tool === 'text') document.getElementById('tool-text').classList.add('tool-active');
             if (tool === 'eraser') document.getElementById('tool-eraser').classList.add('tool-active');
-            if (tool === 'hint') document.getElementById('tool-hint').classList.add('tool-active');
             if (tool === 'pen') {
                 if (color === '#1e293b') document.getElementById('tool-pen-black').classList.add('tool-active');
                 if (color === '#2563eb') document.getElementById('tool-pen-blue').classList.add('tool-active');
                 if (color === '#ef4444') document.getElementById('tool-pen-red').classList.add('tool-active');
             }
+
+            const canvases = document.querySelectorAll('.drawing-canvas');
+            canvases.forEach(c => {
+                if (tool === 'pan') {
+                    c.style.pointerEvents = 'none';
+                } else {
+                    c.style.pointerEvents = 'auto';
+                }
+            });
         }
 
         function changeZoom(delta) {
-            currentZoom = Math.min(Math.max(currentZoom + delta, 0.6), 2.5);
+            setZoom(currentZoom + delta);
+        }
+
+        function setZoom(newZoom) {
+            currentZoom = Math.min(Math.max(newZoom, 0.6), 2.8);
             const container = document.getElementById('pdfContainer');
             container.style.transform = `scale(${currentZoom})`;
+            document.getElementById('zoomPercentDisplay').innerText = `${Math.round(currentZoom * 100)}%`;
+            updateContainerBounds();
+        }
+
+        function initPanScroll() {
+            const wrapper = document.getElementById('pdfScrollWrapper');
+            let isDown = false, startX, startY, scrollLeft, scrollTop;
+
+            wrapper.addEventListener('mousedown', (e) => {
+                if (currentTool !== 'pan') return;
+                isDown = true;
+                wrapper.style.cursor = 'grabbing';
+                startX = e.pageX - wrapper.offsetLeft;
+                startY = e.pageY - wrapper.offsetTop;
+                scrollLeft = wrapper.scrollLeft;
+                scrollTop = wrapper.scrollTop;
+            });
+
+            wrapper.addEventListener('mouseleave', () => { isDown = false; wrapper.style.cursor = 'default'; });
+            wrapper.addEventListener('mouseup', () => { isDown = false; wrapper.style.cursor = 'default'; });
+
+            wrapper.addEventListener('mousemove', (e) => {
+                if (!isDown || currentTool !== 'pan') return;
+                e.preventDefault();
+                const x = e.pageX - wrapper.offsetLeft;
+                const y = e.pageY - wrapper.offsetTop;
+                wrapper.scrollLeft = scrollLeft - (x - startX);
+                wrapper.scrollTop = scrollTop - (y - startY);
+            });
+        }
+
+        function initTwoFingerPinch() {
+            const wrapper = document.getElementById('pdfScrollWrapper');
+
+            function getDistance(t1, t2) {
+                return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            }
+
+            function getMidpoint(t1, t2) {
+                return {
+                    x: (t1.clientX + t2.clientX) / 2,
+                    y: (t1.clientY + t2.clientY) / 2
+                };
+            }
+
+            wrapper.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    isTwoFingerGesture = true;
+                    touchStartDist = getDistance(e.touches[0], e.touches[1]);
+                    touchStartZoom = currentZoom;
+                    touchStartPan = getMidpoint(e.touches[0], e.touches[1]);
+                    touchStartScroll = { left: wrapper.scrollLeft, top: wrapper.scrollTop };
+                }
+            }, { passive: false });
+
+            wrapper.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && isTwoFingerGesture) {
+                    e.preventDefault();
+                    
+                    const newDist = getDistance(e.touches[0], e.touches[1]);
+                    if (touchStartDist > 0) {
+                        const scale = newDist / touchStartDist;
+                        setZoom(touchStartZoom * scale);
+                    }
+
+                    const currentMid = getMidpoint(e.touches[0], e.touches[1]);
+                    const dx = currentMid.x - touchStartPan.x;
+                    const dy = currentMid.y - touchStartPan.y;
+                    wrapper.scrollLeft = touchStartScroll.left - dx;
+                    wrapper.scrollTop = touchStartScroll.top - dy;
+                }
+            }, { passive: false });
+
+            wrapper.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    isTwoFingerGesture = false;
+                }
+            });
         }
 
         function initToolbarDrag() {
@@ -814,8 +1089,249 @@
             });
         }
 
+        // 4. 圖片做「智慧尺寸限制」而非無腦放大 (長寬上限設定為 1600px，既清晰又不爆量)
+        function getSmartResizedPngDataUrl(canvas, maxDimension = 1600) {
+            let width = canvas.width;
+            let height = canvas.height;
+
+            if (width > maxDimension || height > maxDimension) {
+                const ratio = Math.min(maxDimension / width, maxDimension / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+
+            const resizedCanvas = document.createElement('canvas');
+            resizedCanvas.width = width;
+            resizedCanvas.height = height;
+            const rCtx = resizedCanvas.getContext('2d');
+            
+            // 啟用平滑縮放演算法
+            rCtx.imageSmoothingEnabled = true;
+            rCtx.imageSmoothingQuality = 'high';
+            rCtx.drawImage(canvas, 0, 0, width, height);
+
+            // 2. 輸出格式全面改為 PNG
+            return resizedCanvas.toDataURL('image/png');
+        }
+
+        // 3. 前端呼叫封裝（支援 Exponential Backoff 自動重試）
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            let attempt = 0;
+            const retryStatus = document.getElementById('retryStatusText');
+
+            while (attempt < maxRetries) {
+                try {
+                    const response = await fetch(url, options);
+                    const data = await response.json();
+
+                    if (!response.ok || data.error) {
+                        const errMsg = (data.error && data.error.message) ? data.error.message : `HTTP ${response.status}`;
+                        const isHighDemand = errMsg.includes('high demand') || errMsg.includes('overloaded') || response.status === 503 || response.status === 429;
+
+                        if (isHighDemand && attempt < maxRetries - 1) {
+                            attempt++;
+                            const delayMs = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s 指數退避
+                            if (retryStatus) {
+                                retryStatus.classList.remove('hidden');
+                                retryStatus.innerText = `伺服器負載較高，正在進行第 ${attempt}/${maxRetries - 1} 次自動重試 (${delayMs/1000}秒後)...`;
+                            }
+                            await new Promise(res => setTimeout(res, delayMs));
+                            continue;
+                        } else {
+                            throw new Error(errMsg);
+                        }
+                    }
+
+                    if (retryStatus) retryStatus.classList.add('hidden');
+                    return data;
+
+                } catch (err) {
+                    const isNetworkOrDemand = err.message.includes('high demand') || err.message.includes('overloaded') || err.message.includes('Failed to fetch');
+                    if (isNetworkOrDemand && attempt < maxRetries - 1) {
+                        attempt++;
+                        const delayMs = Math.pow(2, attempt) * 1000;
+                        if (retryStatus) {
+                            retryStatus.classList.remove('hidden');
+                            retryStatus.innerText = `連線重試中，正在進行第 ${attempt}/${maxRetries - 1} 次重試 (${delayMs/1000}秒後)...`;
+                        }
+                        await new Promise(res => setTimeout(res, delayMs));
+                    } else {
+                        if (retryStatus) retryStatus.classList.add('hidden');
+                        throw err;
+                    }
+                }
+            }
+        }
+
+        // 統一多 AI 引擎視覺呼叫
+        async function callVisionAi(provider, model, apiKey, promptText, studentImages, answerImages) {
+            if (!apiKey) {
+                throw new Error(`請先至「AI 設定」輸入 ${AI_CONFIG[provider].name} 的 API Key`);
+            }
+
+            // 1. Google Gemini (支援 PNG 與重試機制)
+            if (provider === 'gemini') {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                const parts = [
+                    { text: promptText },
+                    { text: "【學生作答考卷影像（請務必嚴格放大檢視每一題的連線起訖點與書寫內容）】： " },
+                    ...studentImages.map(img => ({
+                        inline_data: { mime_type: "image/png", data: img.split(',')[1] }
+                    }))
+                ];
+
+                if (answerImages.length > 0) {
+                    parts.push({ text: "【老師標準解答卷影像（請以此標準答案為依據進行批改）】： " });
+                    answerImages.forEach(img => {
+                        parts.push({
+                            inline_data: { mime_type: "image/png", data: img.split(',')[1] }
+                        });
+                    });
+                }
+
+                const data = await fetchWithRetry(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: parts }],
+                        generationConfig: {
+                            responseMimeType: "application/json"
+                        }
+                    })
+                });
+
+                return data.candidates[0].content.parts[0].text;
+            }
+
+            // 2. ChatGPT (OpenAI)
+            if (provider === 'openai') {
+                const apiUrl = "https://api.openai.com/v1/chat/com/completions";
+                const userContents = [
+                    { type: "text", text: promptText },
+                    { type: "text", text: "【學生作答考卷影像】： " }
+                ];
+
+                studentImages.forEach(img => {
+                    userContents.push({
+                        type: "image_url",
+                        image_url: { url: img, detail: "high" }
+                    });
+                });
+
+                if (answerImages.length > 0) {
+                    userContents.push({ type: "text", text: "【老師標準解答卷影像】： " });
+                    answerImages.forEach(img => {
+                        userContents.push({
+                            type: "image_url",
+                            image_url: { url: img, detail: "high" }
+                        });
+                    });
+                }
+
+                const bodyPayload = {
+                    model: model,
+                    response_format: { type: "json_object" },
+                    messages: [
+                        { role: "user", content: userContents }
+                    ],
+                    max_tokens: 4096
+                };
+
+                const data = await fetchWithRetry(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(bodyPayload)
+                });
+
+                return data.choices[0].message.content;
+            }
+
+            // 3. Claude AI (Anthropic)
+            if (provider === 'claude') {
+                const apiUrl = "https://api.anthropic.com/v1/messages";
+                const userContents = [
+                    { type: "text", text: promptText },
+                    { type: "text", text: "【學生作答考卷影像】： " }
+                ];
+
+                studentImages.forEach(img => {
+                    userContents.push({
+                        type: "image",
+                        source: {
+                            type: "base64",
+                            media_type: "image/png",
+                            data: img.split(',')[1]
+                        }
+                    });
+                });
+
+                if (answerImages.length > 0) {
+                    userContents.push({ type: "text", text: "【老師標準解答卷影像】： " });
+                    answerImages.forEach(img => {
+                        userContents.push({
+                            type: "image",
+                            source: {
+                                type: "base64",
+                                media_type: "image/png",
+                                data: img.split(',')[1]
+                            }
+                        });
+                    });
+                }
+
+                const data = await fetchWithRetry(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01',
+                        'content-type': 'application/json',
+                        'anthropic-dangerous-direct-browser-access': 'true'
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        max_tokens: 4096,
+                        messages: [
+                            { role: "user", content: userContents }
+                        ]
+                    })
+                });
+
+                return data.content[0].text;
+            }
+
+            throw new Error(`不支援的 AI 平台: ${provider}`);
+        }
+
+        function parseAiResponseJson(rawText) {
+            let clean = rawText.trim();
+            if (clean.startsWith('```json')) {
+                clean = clean.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+            } else if (clean.startsWith('```')) {
+                clean = clean.replace(/^```\s*/i, '').replace(/\s*```$/, '');
+            }
+            const firstBrace = clean.indexOf('{');
+            const lastBrace = clean.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace !== -1) {
+                clean = clean.substring(firstBrace, lastBrace + 1);
+            }
+            return JSON.parse(clean);
+        }
+
         async function submitExam() {
             if (timerInterval) clearInterval(timerInterval);
+
+            const provider = getSavedProvider();
+            const model = getSavedModel(provider);
+            const apiKey = getSavedApiKey(provider);
+
+            const providerName = AI_CONFIG[provider]?.name || provider;
+            document.getElementById('processingTitle').innerText = `${providerName} (${model}) 智慧批改中...`;
+            document.getElementById('processingDesc').innerText = `正在逐筆嚴格追蹤連連看筆劃軌跡、檢驗空白未作答，請稍候`;
+            const retryElem = document.getElementById('retryStatusText');
+            if (retryElem) retryElem.classList.add('hidden');
             document.getElementById('processingOverlay').classList.remove('hidden');
 
             try {
@@ -828,74 +1344,90 @@
                     tempCanvas.width = canvas.width;
                     tempCanvas.height = canvas.height;
                     const tCtx = tempCanvas.getContext('2d');
+                    
                     tCtx.drawImage(canvas, 0, 0);
                     tCtx.drawImage(drawCanvas, 0, 0);
 
-                    // 同時把打字輸入框的文字繪製到圖片上
                     const inputs = pageDiv.querySelectorAll('.type-input');
                     tCtx.font = "bold 20px 'Noto Sans TC', sans-serif";
                     tCtx.fillStyle = "#1e3a8a";
                     inputs.forEach(inp => {
-                        const left = parseFloat(inp.style.left);
-                        const top = parseFloat(inp.style.top);
-                        tCtx.fillText(inp.value, left, top + 20);
+                        const left = parseFloat(inp.style.left) || 0;
+                        const top = parseFloat(inp.style.top) || 0;
+                        const lines = inp.value.split(/\r?\n/);
+                        lines.forEach((line, idx) => {
+                            tCtx.fillText(line, left + 4, top + 20 + (idx * 24));
+                        });
                     });
 
-                    pageImages.push(tempCanvas.toDataURL('image/jpeg', 0.8));
+                    // 4. 智慧限制尺寸 + 2. 改為 PNG 格式
+                    pageImages.push(getSmartResizedPngDataUrl(tempCanvas, 1600));
                 }
-
-                const apiKey = getApiKey();
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
 
                 let answerImages = [];
                 if (answerPdfDoc) {
                     for (let i = 1; i <= answerPdfDoc.numPages; i++) {
                         const page = await answerPdfDoc.getPage(i);
-                        const viewport = page.getViewport({ scale: 1.2 });
+                        // 1. 渲染倍率改為 1.5
+                        const viewport = page.getViewport({ scale: 1.5 });
                         const canvas = document.createElement('canvas');
                         canvas.width = viewport.width;
                         canvas.height = viewport.height;
                         await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
-                        answerImages.push(canvas.toDataURL('image/jpeg', 0.8));
+                        // 4. 智慧限制尺寸 + 2. 改為 PNG 格式
+                        answerImages.push(getSmartResizedPngDataUrl(canvas, 1600));
                     }
                 }
 
-                const promptText = `你是一位國小資深優良老師。請以繁體中文批改這份學生的考卷影像（包含是非題、選擇題、填空、連連看與打勾題等）。
-請嚴格輸出符合以下 JSON 格式的內容，不要包含額外的 Markdown 標記，直接輸出純 JSON 字串：
+                const promptText = `你是一位專業且極富同理心的國小資深特優教師。請以繁體中文全面且嚴謹地批改這份學生的考卷影像。
+考卷可能包含是非題、選擇題、填空題、算術題、連連看（畫線配對題）、打勾題等各種題型。
+
+【重要批改規範】
+1. 完整列舉每一題：請從第1頁到最後一頁，逐大題、逐小題完整檢閱，【所有考題都必須列入 questions 陣列，絕對不可省略、跳過或合併】。
+2. 題號標示清楚：請用包含大題的方式標示題號，例如："一-1"、"一-2"、"二-1"、"四-(1)"。
+3. 空白題目判定：
+   - 若該題作答區為空白（無手繪筆跡、無打字），代表學生【未作答】。
+   - "studentAnswer" 必須填寫 "未作答"，且 "correct" 必須為 false，【絕對不可給分】！不可將印刷題幹誤判為學生答案。
+
+4. 【連連看 / 畫線配對題專項檢驗鐵則】：
+   - 嚴禁憑空假設學生全對！模型必須從左側題目圓點出發，沿著黑色筆劃軌跡【實際追蹤到右側終點圓點】。
+   - 連連看常有交叉線，請仔細分辨哪一條線連到哪一個項目。
+   - 連連看的大題必須將每一條連線拆分為單獨的小題批改（例如："四-(1)澎湖群島"、"四-(2)龜山島"...）。
+   - 在 "studentAnswer" 中，必須明確寫出學生線條實際連到的選項（例如："連至①本島東側"）。
+   - 若學生連到了錯誤的選項，該小題必須判定為 correct: false，絕不寬貸！
+
+5. 解答卷依據：若有附上「老師標準解答卷」，請嚴格參照解答卷批改。
+6. 總分計算：請依據所有題目的答對比例（或題目配分），客觀計算總分 score（滿分100）。若有答錯，請在 wrongIds 中列出該題的題號 id。
+
+請輸出嚴格符合以下結構的純 JSON 格式（不要包含任何額外問候語或 Markdown 包裝）：
 {
-  "score": 85,
-  "feedback": "老師給學生的總體鼓勵與評語（繁體中文）",
+  "totalQuestions": 15,
+  "correctCount": 12,
+  "score": 80,
+  "feedback": "給小朋友的鼓勵評語（繁體中文，溫暖且具體指引改進方向）",
+  "wrongIds": ["四-(1)", "四-(2)", "四-(3)"],
   "questions": [
     {
-      "id": 1,
+      "id": "四-(1)",
+      "type": "連連看",
+      "correct": false,
+      "studentAnswer": "連至①本島東側",
+      "rightAnswer": "②本島西側",
+      "analysis": "學生畫線連至本島東側，但澎湖群島位於臺灣海峽中，應位於本島西側。"
+    },
+    {
+      "id": "四-(4)",
+      "type": "連連看",
       "correct": true,
-      "studentAnswer": "①",
-      "rightAnswer": "①",
-      "analysis": "解答正確..."
+      "studentAnswer": "連至①本島東側",
+      "rightAnswer": "①本島東側",
+      "analysis": "連線正確。綠島位於臺東外海，屬於本島東側。"
     }
-  ],
-  "wrongIds": [5, 9]
+  ]
 }`;
 
-                const contentsPart = [
-                    { text: promptText },
-                    ...pageImages.map(img => ({
-                        inline_data: { mime_type: "image/jpeg", data: img.split(',')[1] }
-                    }))
-                ];
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: contentsPart }] })
-                });
-
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
-
-                const rawText = data.candidates[0].content.parts[0].text;
-                const cleanJsonStr = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-                const result = JSON.parse(cleanJsonStr);
+                const rawAiOutput = await callVisionAi(provider, model, apiKey, promptText, pageImages, answerImages);
+                const result = parseAiResponseJson(rawAiOutput);
 
                 document.getElementById('processingOverlay').classList.add('hidden');
                 displayResult(result);
@@ -908,31 +1440,44 @@
 
         function displayResult(result) {
             document.getElementById('resultModalStudentName').innerText = `學生：${studentName}`;
-            document.getElementById('resultScore').innerText = result.score;
+            
+            let finalScore = result.score;
+            if (typeof finalScore !== 'number' && result.questions && result.questions.length > 0) {
+                const correctCount = result.questions.filter(q => q.correct).length;
+                finalScore = Math.round((correctCount / result.questions.length) * 100);
+            }
+            document.getElementById('resultScore').innerText = finalScore;
             document.getElementById('resultDuration').innerText = document.getElementById('timerDisplay').innerText;
-            document.getElementById('aiFeedbackText').innerText = result.feedback;
+            document.getElementById('aiFeedbackText').innerText = result.feedback || '表現良好，繼續加油！';
 
-            // 記錄本次錯題供再考一次高亮使用
-            lastWrongQuestions = result.wrongIds || [];
+            const questions = result.questions || [];
+            const correctCount = questions.filter(q => q.correct).length;
+            document.getElementById('resultQuestionStats').innerText = `答對 ${correctCount} / 共 ${questions.length} 題`;
+
+            lastWrongQuestions = result.wrongIds || questions.filter(q => !q.correct).map(q => q.id);
 
             const container = document.getElementById('allQuestionsContainer');
             container.innerHTML = '';
 
-            if (result.questions && result.questions.length > 0) {
-                result.questions.forEach(q => {
+            if (questions.length > 0) {
+                questions.forEach(q => {
                     const card = document.createElement('div');
                     card.className = `p-4 rounded-2xl border ${q.correct ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'} flex items-start gap-3`;
+                    
+                    const isBlank = !q.studentAnswer || q.studentAnswer === '未作答' || q.studentAnswer.trim() === '';
+                    const answerDisplay = isBlank ? '<span class="text-rose-500 font-bold">（空白未作答）</span>' : `<span class="font-semibold text-slate-800">${q.studentAnswer}</span>`;
+
                     card.innerHTML = `
                         <div class="w-8 h-8 rounded-full ${q.correct ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'} flex items-center justify-center shrink-0 font-bold text-sm">
                             ${q.correct ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>'}
                         </div>
                         <div class="flex-1 text-sm">
                             <div class="flex justify-between items-center mb-1">
-                                <span class="font-bold text-slate-800">第 ${q.id} 題</span>
+                                <span class="font-bold text-slate-800">第 ${q.id} 題 ${q.type ? `<span class="text-xs text-slate-400 font-normal">(${q.type})</span>` : ''}</span>
                                 <span class="text-xs font-semibold ${q.correct ? 'text-emerald-600' : 'text-rose-600'}">${q.correct ? '答對' : '答錯'}</span>
                             </div>
-                            <p class="text-slate-600 mb-1">學生作答：<span class="font-semibold text-slate-800">${q.studentAnswer || '無'}</span> | 正確答案：<span class="font-semibold text-emerald-700">${q.rightAnswer}</span></p>
-                            <p class="text-xs text-slate-500 bg-white/60 p-2 rounded-xl border border-slate-200/50">解析：${q.analysis}</p>
+                            <p class="text-slate-600 mb-1">學生作答：${answerDisplay} | 正確答案：<span class="font-semibold text-emerald-700">${q.rightAnswer || '詳見解析'}</span></p>
+                            <p class="text-xs text-slate-500 bg-white/70 p-2.5 rounded-xl border border-slate-200/60 leading-relaxed">解析：${q.analysis || '無解析'}</p>
                         </div>
                     `;
                     container.appendChild(card);
@@ -941,8 +1486,7 @@
                 container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">無詳細題號解析資料</p>';
             }
 
-            // 儲存至歷史紀錄
-            saveHistory(result.score);
+            saveHistory(finalScore);
             document.getElementById('resultModal').classList.remove('hidden');
         }
 
@@ -984,7 +1528,6 @@
 
         function retryExam() {
             document.getElementById('resultModal').classList.add('hidden');
-            // 保留錯題標記，重新渲染
             startExam();
         }
 
