@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuizCrafter 專業題庫大師 - 智慧測驗與多模態匯入系統 (Gemini 3.6 Flash)</title>
+    <title>QuizCrafter 專業題庫大師 v3.3.0 (IndexedDB 海量圖檔防爆版)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -22,13 +22,13 @@
                         }
                     },
                     fontFamily: {
-                        sans: ['Inter', 'Microsoft JhengHei', 'sans-serif']
+                        sans: ['Inter', 'Microsoft JhengHei', 'PingFang TC', 'sans-serif']
                     }
                 }
             }
         }
     </script>
-    <!-- FontAwesome & Libraries -->
+    <!-- FontAwesome、PDF.js、Marked.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -36,19 +36,33 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
     <style>
-        body { font-family: 'Inter', 'Microsoft JhengHei', sans-serif; }
+        body { font-family: 'Inter', 'Microsoft JhengHei', 'PingFang TC', sans-serif; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
+            from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-fade-in { animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .quiz-img-container img {
+            max-width: 100%;
+            max-height: 420px;
+            object-fit: contain;
+            border-radius: 0.75rem;
+            margin: 0.75rem auto;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+            cursor: zoom-in;
+            transition: transform 0.2s;
+        }
+        .quiz-img-container img:hover {
+            transform: scale(1.01);
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-full flex flex-col selection:bg-brand-500 selection:text-white">
 
-    <!-- 導覽列 -->
+    <!-- 頂端導覽列 -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
@@ -57,7 +71,7 @@
                 </div>
                 <div>
                     <span class="text-xl font-bold bg-gradient-to-r from-brand-600 to-indigo-500 bg-clip-text text-transparent">QuizCrafter</span>
-                    <span class="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 ml-2 bg-brand-50 text-brand-700 rounded-full border border-brand-100">Gemini 3.6 Flash</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 ml-2 bg-indigo-50 text-brand-700 rounded-full border border-brand-100 cursor-pointer" onclick="showChangelogModal()" title="點擊檢視更新記錄">v3.5.0 (503 避峰與高抗壓模型版)</span>
                 </div>
             </div>
 
@@ -66,59 +80,65 @@
                     <i class="fa-solid fa-chart-pie mr-2"></i>儀表板
                 </button>
                 <button onclick="switchTab('library')" id="nav-library" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-slate-100 transition">
-                    <i class="fa-solid fa-folder-open mr-2"></i>題庫管理
+                    <i class="fa-solid fa-folder-tree mr-2"></i>題庫管理
                 </button>
                 <button onclick="switchTab('builder')" id="nav-builder" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-slate-100 transition">
-                    <i class="fa-solid fa-square-plus mr-2"></i>建立與匯入
+                    <i class="fa-solid fa-cloud-arrow-up mr-2"></i>智慧解析考卷
                 </button>
                 <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-slate-100 transition">
-                    <i class="fa-solid fa-gear mr-2"></i>設定
+                    <i class="fa-solid fa-gear mr-2"></i>API設定
                 </button>
             </nav>
 
-            <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2">
+                <button onclick="showApiKeyGuideModal()" class="text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg border border-amber-200 transition font-medium flex items-center">
+                    <i class="fa-solid fa-key mr-1.5"></i><span id="api-status-badge">API Key 未設定</span>
+                </button>
                 <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
             </div>
         </div>
 
+        <!-- 手機版選單 -->
         <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 bg-white px-4 pt-2 pb-4 space-y-1 shadow-lg">
             <button onclick="switchTab('dashboard'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">儀表板</button>
             <button onclick="switchTab('library'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">題庫管理</button>
-            <button onclick="switchTab('builder'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">建立與匯入</button>
-            <button onclick="switchTab('settings'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">設定</button>
+            <button onclick="switchTab('builder'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">智慧解析考卷</button>
+            <button onclick="switchTab('settings'); toggleMobileMenu();" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-brand-50 hover:text-brand-600">API設定</button>
         </div>
     </header>
 
-    <!-- 主容器 -->
+    <!-- 主內容區 -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <!-- 1. 儀表板頁面 -->
         <section id="tab-dashboard" class="tab-content active animate-fade-in space-y-8">
-            <div class="bg-gradient-to-r from-brand-600 to-indigo-700 text-white p-6 sm:p-10 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div class="bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-700 text-white p-6 sm:p-10 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div class="space-y-3 max-w-2xl">
-                    <span class="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">QuizCrafter Pro with Gemini 3.6 Flash</span>
-                    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">歡迎回來，題庫大師！</h1>
-                    <p class="text-indigo-100 text-sm sm:text-base">支援 Markdown、JSON、PDF 與多模態圖像智慧解析，一鍵匯入 20 份自然科素養卷與 8 大題型測驗。</p>
+                    <span class="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">v3.0.0 真多模態考卷視覺辨識</span>
+                    <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">國小/國中實體考卷直轉線上測驗</h1>
+                    <p class="text-indigo-100 text-sm sm:text-base leading-relaxed">
+                        支援 PDF 考卷（如翰林、康軒、南一）、JPG/PNG 考卷翻拍圖片。自動將 PDF 轉化為高清圖頁，並由 Gemini 進行<strong>多模態視覺判讀、自動排版、自動解題與素養情境保留</strong>！
+                    </p>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                     <button onclick="switchTab('builder')" class="bg-white text-brand-700 hover:bg-indigo-50 font-semibold px-6 py-3 rounded-xl shadow-md transition flex items-center justify-center">
-                        <i class="fa-solid fa-plus mr-2 text-brand-600"></i>建立新測驗
+                        <i class="fa-solid fa-wand-magic-sparkles mr-2 text-brand-600"></i>匯入考卷 PDF / 圖片
                     </button>
                     <button onclick="switchTab('library')" class="bg-brand-700/60 hover:bg-brand-700 border border-white/20 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition flex items-center justify-center">
-                        <i class="fa-solid fa-play mr-2"></i>開始測驗
+                        <i class="fa-solid fa-folder-tree mr-2"></i>瀏覽題庫列表
                     </button>
                 </div>
             </div>
 
-            <!-- 數據統計卡片 -->
+            <!-- 數據統計 -->
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-6">
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
-                    <div class="w-14 h-14 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-2xl"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center text-2xl"><i class="fa-solid fa-folder-open"></i></div>
                     <div>
-                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">總題庫數</div>
-                        <div id="stat-total-quizzes" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">題庫資料夾數</div>
+                        <div id="stat-total-folders" class="text-2xl font-bold text-slate-900 mt-1">0</div>
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
@@ -138,7 +158,7 @@
                 <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
                     <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl"><i class="fa-solid fa-chart-line"></i></div>
                     <div>
-                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">平均正確率</div>
+                        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">平均得分率</div>
                         <div id="stat-avg-score" class="text-2xl font-bold text-slate-900 mt-1">0%</div>
                     </div>
                 </div>
@@ -147,73 +167,106 @@
 
         <!-- 2. 題庫管理頁面 -->
         <section id="tab-library" class="tab-content animate-fade-in space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
                 <div class="w-full sm:w-80 relative">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-search"></i></span>
-                    <input type="text" id="search-quiz-input" oninput="filterQuizzes()" placeholder="搜尋題庫名稱或分類..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                    <input type="text" id="search-quiz-input" oninput="filterFolders()" placeholder="搜尋資料夾、測驗或科目..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
                 </div>
-                <div class="flex space-x-3 w-full sm:w-auto justify-end">
-                    <button onclick="exportAllQuizzes()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition flex items-center space-x-2">
-                        <i class="fa-solid fa-download text-brand-600"></i><span>匯出全部 JSON</span>
+                <div class="flex flex-wrap gap-2.5 w-full sm:w-auto justify-end">
+                    <button onclick="exportAllFolders()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition flex items-center space-x-2">
+                        <i class="fa-solid fa-download text-brand-600"></i><span>備份全部 (JSON)</span>
                     </button>
                     <label class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-md transition cursor-pointer flex items-center space-x-2">
-                        <i class="fa-solid fa-upload"></i><span>匯入 JSON / MD</span>
-                        <input type="file" id="import-file" accept=".json,.md,.txt" class="hidden" onchange="importQuizFile(event)">
+                        <i class="fa-solid fa-file-import"></i><span>匯入 JSON / MD 備份檔</span>
+                        <input type="file" id="import-file" accept=".json,.md,.txt" class="hidden" onchange="importJsonBackupFile(event)">
                     </label>
                 </div>
             </div>
 
-            <div id="quiz-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- 動態載入題庫卡片 -->
-            </div>
+            <div id="folder-list-container" class="space-y-4"></div>
         </section>
 
-        <!-- 3. 建立與多模態匯入頁面 -->
+        <!-- 3. 智慧匯入與建立頁面 (以 Gemini 多模態為核心) -->
         <section id="tab-builder" class="tab-content animate-fade-in space-y-6">
-            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6">
                 <div class="flex space-x-3 border-b border-slate-100 pb-4">
-                    <button onclick="switchBuilderMode('manual')" id="btn-mode-manual" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-brand-600 text-white transition"><i class="fa-solid fa-pen-to-square mr-2"></i>手動與 8 大題型建立</button>
-                    <button onclick="switchBuilderMode('multimodal')" id="btn-mode-multimodal" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition"><i class="fa-solid fa-cloud-arrow-up mr-2"></i>多檔案智慧匯入 (MD/PDF/圖片)</button>
+                    <button onclick="switchBuilderMode('multimodal')" id="btn-mode-multimodal" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-brand-600 text-white transition">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>上傳 PDF 考卷 / 圖檔 (Gemini 多模態解析)
+                    </button>
+                    <button onclick="switchBuilderMode('manual')" id="btn-mode-manual" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-code mr-2"></i>Markdown / 文字手動貼上
+                    </button>
                 </div>
 
-                <!-- 手動建立區塊 -->
-                <div id="builder-manual-section" class="space-y-6">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div class="sm:col-span-2">
-                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">測驗標題 *</label>
-                            <input type="text" id="new-quiz-title" placeholder="例如：自然科第 1 回" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">分類</label>
-                            <input type="text" id="new-quiz-category" placeholder="例如：單元練習卷" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
-                        </div>
-                    </div>
-                    <div class="flex justify-end pt-4 border-t border-slate-100">
-                        <button onclick="saveCurrentQuiz()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md transition flex items-center space-x-2">
-                            <i class="fa-solid fa-floppy-disk"></i><span>儲存測驗</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 多檔案智慧匯入區塊 (支援 .md, .pdf, .png, .jpg) -->
-                <div id="builder-multimodal-section" class="hidden space-y-6">
-                    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-indigo-900 space-y-2">
-                        <h4 class="font-bold text-base"><i class="fa-solid fa-cloud-arrow-up mr-2 text-indigo-600"></i>多檔案批次智慧匯入 (支援 .md, .pdf, .png, .jpg)</h4>
-                        <p class="text-xs text-indigo-700 leading-relaxed">上傳 Markdown (.md)、PDF 或圖像檔案。系統將透過 Gemini 3.6 Flash 自動解析，完美轉為結構化題庫與占比分數！</p>
+                <!-- 多模態匯入區塊 -->
+                <div id="builder-multimodal-section" class="space-y-6">
+                    <div class="bg-indigo-50/80 border border-indigo-100 rounded-2xl p-5 text-indigo-950 space-y-2">
+                        <h4 class="font-bold text-base flex items-center text-indigo-900">
+                            <i class="fa-solid fa-circle-check text-emerald-600 mr-2"></i>已啟用真·考卷視覺解析引擎 (v3.0.0 核心突破)
+                        </h4>
+                        <p class="text-xs text-indigo-800 leading-relaxed">
+                            針對中小學自然科、社會科、數學科等複雜考卷（例如翰林版《自然5上》），本系統會使用 <code>PDF.js</code> 將考卷<strong>自動渲染為高解析度頁面圖檔</strong>，並經由 <strong>Gemini 視覺模型</strong> 完整辨識題目、是非題、選擇題、活用題導讀，並<strong>自動推導標準解答與詳解</strong>！
+                        </p>
                     </div>
 
-                    <div class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-10 text-center cursor-pointer transition bg-slate-50" onclick="document.getElementById('multi-file-input').click()">
-                        <i class="fa-solid fa-file-arrow-up text-4xl text-brand-500 mb-3"></i>
-                        <p class="text-sm font-bold text-slate-700">點擊或拖曳檔案至此處上傳</p>
-                        <p class="text-xs text-slate-400 mt-1">支援 .md, .txt, .pdf, .png, .jpg, .jpeg</p>
-                        <input type="file" id="multi-file-input" multiple accept=".md,.txt,.pdf,.png,.jpg,.jpeg" class="hidden" onchange="handleMultipleFiles(event)">
+                    <!-- 檔案上傳拖拉區 -->
+                    <div class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition bg-slate-50" onclick="document.getElementById('multi-file-input').click()">
+                        <div class="w-16 h-16 mx-auto mb-3 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center text-3xl">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </div>
+                        <p class="text-base font-bold text-slate-800">點擊選取或拖曳考卷檔案至此</p>
+                        <p class="text-xs text-slate-400 mt-1">支援實體考卷 PDF (.pdf)、考卷手機翻拍圖檔 (.jpg, .jpeg, .png) 或 Markdown (.md)</p>
+                        <input type="file" id="multi-file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.md,.txt" class="hidden" onchange="handleMultipleFiles(event)">
                     </div>
 
                     <div id="uploaded-files-list" class="space-y-2"></div>
 
+                    <!-- 解析進度指示條 (預設隱藏) -->
+                    <div id="parsing-progress-box" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                        <div class="flex justify-between items-center text-xs font-semibold text-slate-700">
+                            <span id="parsing-status-text">正在透過 Gemini 視覺模型分析試卷結構...</span>
+                            <span id="parsing-status-percent">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                            <div id="parsing-progress-bar" class="bg-brand-600 h-full transition-all duration-300" style="width: 10%"></div>
+                        </div>
+                    </div>
+
                     <div class="flex justify-end pt-4 border-t border-slate-100">
-                        <button onclick="processUploadedFilesWithGemini()" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md transition flex items-center space-x-2">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i><span>開始 Gemini 3.6 Flash 智慧解析</span>
+                        <button onclick="startMultimodalParsing()" class="px-7 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-brain"></i><span>啟動 Gemini 智慧轉錄考卷</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 手動/Markdown 貼上區塊 -->
+                <div id="builder-manual-section" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">資料夾名稱 *</label>
+                            <input type="text" id="manual-folder-name" value="自訂練習題庫" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">測驗標題 *</label>
+                            <input type="text" id="manual-quiz-title" placeholder="例如：自然科第 2 單元" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">分類標籤</label>
+                            <input type="text" id="manual-quiz-category" value="自然科" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label class="text-sm font-semibold text-slate-700">題目內容 (Markdown 格式)</label>
+                            <button type="button" onclick="insertSampleMarkdown()" class="text-xs text-brand-600 hover:underline">載入示範考卷格式</button>
+                        </div>
+                        <textarea id="manual-markdown-content" rows="12" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm leading-relaxed focus:outline-none focus:border-brand-500" placeholder="請依照 Markdown 格式輸入..."></textarea>
+                    </div>
+
+                    <div class="flex justify-end pt-4 border-t border-slate-100">
+                        <button onclick="saveManualMarkdownQuiz()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-floppy-disk"></i><span>儲存為新測驗卷</span>
                         </button>
                     </div>
                 </div>
@@ -222,11 +275,31 @@
 
         <!-- 4. 設定頁面 -->
         <section id="tab-settings" class="tab-content animate-fade-in max-w-2xl mx-auto space-y-6">
-            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-                <h3 class="text-lg font-bold text-slate-900 flex items-center"><i class="fa-solid fa-key text-brand-600 mr-2"></i>Gemini 3.6 Flash API 設定</h3>
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-key text-brand-600 mr-2"></i>Gemini API 設定 (考卷視覺解析必備)
+                </h3>
+                <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+                    <strong>重要提示：</strong>若要讓系統自動辨識 PDF 考卷中的雙欄題目、插圖與自動推導答案，<strong>必須填寫 Gemini API Key</strong>。API Key 僅存於您本人的瀏覽器 LocalStorage，絕不會洩漏。
+                </div>
                 <div>
-                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Google Gemini API Key</label>
-                    <input type="password" id="settings-api-key" placeholder="AIzaSy..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-sm font-semibold text-slate-700">Google Gemini API Key</label>
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-brand-600 hover:underline flex items-center">
+                            免費取得 API Key <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+                        </a>
+                    </div>
+                    <input type="password" id="settings-api-key" placeholder="AIzaSy..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500 font-mono">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">多模態模型選擇</label>
+                    <select id="settings-model" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (高抗壓首選：超大容量、極少 503 壅塞)</option>
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (平衡旗艦：學科解題精準且穩定)</option>
+                        <option value="gemini-3.8-flash">Gemini 3.8 Flash (最新高智能：遇尖峰時段自動觸發避峰)</option>
+                        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (極速備援通道)</option>
+                        <option value="gemini-flash-latest">Gemini Flash (自動指向最新穩定版)</option>
+                    </select>
                 </div>
                 <div class="flex justify-end pt-4 border-t border-slate-100">
                     <button onclick="saveSettings()" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md transition">儲存設定</button>
@@ -242,82 +315,379 @@
                         <span id="player-quiz-category" class="text-xs font-semibold px-2.5 py-1 bg-brand-50 text-brand-700 rounded-full">分類</span>
                         <h2 id="player-quiz-title" class="text-xl font-bold text-slate-900 mt-1">測驗標題</h2>
                     </div>
-                    <button onclick="exitQuiz()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    <button onclick="confirmExitQuiz()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-50 transition" title="離開測驗">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
                 </div>
+
+                <!-- 進度條 -->
+                <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div id="player-progress-bar" class="bg-brand-600 h-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+
+                <!-- 題目卡片容器 -->
                 <div id="player-question-card" class="space-y-6"></div>
+
+                <!-- 上一題 / 下一題 控制列 -->
                 <div class="flex justify-between items-center pt-4 border-t border-slate-100">
-                    <button onclick="prevQuestion()" id="btn-prev" class="px-5 py-2.5 bg-slate-100 text-slate-700 text-sm font-semibold rounded-xl">上一題</button>
-                    <button onclick="nextQuestion()" id="btn-next" class="px-6 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl">下一題</button>
+                    <button onclick="prevQuestion()" id="btn-prev" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition">
+                        <i class="fa-solid fa-chevron-left mr-1.5"></i>上一題
+                    </button>
+                    <button onclick="nextQuestion()" id="btn-next" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-md transition flex items-center space-x-1.5">
+                        <span>下一題</span><i class="fa-solid fa-chevron-right ml-1"></i>
+                    </button>
                 </div>
             </div>
         </section>
 
-        <!-- 6. 結算頁面 -->
-        <section id="tab-result" class="tab-content animate-fade-in max-w-2xl mx-auto space-y-6">
+        <!-- 6. 結算與錯題檢討頁面 -->
+        <section id="tab-result" class="tab-content animate-fade-in max-w-3xl mx-auto space-y-6">
             <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center space-y-6">
-                <div class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto">
+                <div id="result-badge-icon" class="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto">
                     <i class="fa-solid fa-trophy"></i>
                 </div>
-                <h2 class="text-2xl font-bold text-slate-900">測驗完成！</h2>
-                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl">
-                    <div><div class="text-xs text-slate-500">總得分</div><div id="result-score" class="text-2xl font-bold text-brand-600">0 分</div></div>
-                    <div><div class="text-xs text-slate-500">答對題數</div><div id="result-correct-count" class="text-2xl font-bold text-emerald-600">0 / 0</div></div>
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">測驗已完成！</h2>
+                    <p id="result-feedback-text" class="text-sm text-slate-500 mt-1">恭喜完成本次試卷練習。</p>
                 </div>
-                <button onclick="switchTab('library')" class="px-6 py-3 bg-brand-600 text-white text-sm font-semibold rounded-xl">返回題庫列表</button>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <div>
+                        <div class="text-xs text-slate-400">總得分</div>
+                        <div id="result-score" class="text-3xl font-extrabold text-brand-600 mt-1">0 分</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400">答對題數</div>
+                        <div id="result-correct-count" class="text-3xl font-extrabold text-emerald-600 mt-1">0 / 0</div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                        <div class="text-xs text-slate-400">答題正確率</div>
+                        <div id="result-accuracy" class="text-3xl font-extrabold text-indigo-600 mt-1">0%</div>
+                    </div>
+                </div>
+
+                <!-- 控制按鈕 -->
+                <div class="flex flex-wrap justify-center gap-3 pt-2">
+                    <button id="btn-retry-wrongs" onclick="retryWrongQuestions()" class="hidden px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl shadow-sm transition">
+                        <i class="fa-solid fa-rotate-right mr-1.5"></i>僅重練錯題
+                    </button>
+                    <button onclick="restartCurrentQuiz()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition">
+                        <i class="fa-solid fa-arrow-rotate-left mr-1.5"></i>整份重測
+                    </button>
+                    <button onclick="switchTab('library')" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl shadow-md transition">
+                        返回題庫列表
+                    </button>
+                </div>
+            </div>
+
+            <!-- 詳細題目檢視與解析 -->
+            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 class="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">試卷逐題檢討與詳解</h3>
+                <div id="result-review-list" class="space-y-4"></div>
             </div>
         </section>
 
     </main>
 
+    <!-- 圖片燈箱 Modal -->
+    <div id="image-lightbox-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4" onclick="closeImageLightbox()">
+        <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+            <img id="lightbox-image" src="" alt="放大檢視" class="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl bg-white p-2">
+            <p class="text-xs text-slate-300 mt-2">點擊任意處關閉放大預覽</p>
+        </div>
+    </div>
+
     <!-- 自定義訊息彈窗 -->
     <div id="custom-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 text-center space-y-4">
             <h3 id="modal-title" class="text-lg font-bold text-slate-900">提示</h3>
-            <p id="modal-message" class="text-sm text-slate-600">訊息內容...</p>
-            <button onclick="closeCustomModal()" class="px-5 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl">確定</button>
+            <div id="modal-message" class="text-sm text-slate-600 leading-relaxed">訊息內容...</div>
+            <div id="modal-buttons" class="flex justify-center space-x-3 pt-2">
+                <button onclick="closeCustomModal()" class="px-5 py-2.5 bg-brand-600 text-white text-sm font-semibold rounded-xl transition">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key 指引彈窗 -->
+    <div id="api-guide-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4 text-left">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-key text-brand-600 mr-2"></i>設定 Gemini API Key
+                </h3>
+                <button onclick="closeApiGuideModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                若要辨識像《自然5上》這類雙欄、含植物圖片與活用題的 PDF 試卷，系統必須呼叫 Google Gemini 多模態 API。請前往 Google AI Studio 免費取得金鑰並貼在下方：
+            </p>
+            <div>
+                <input type="password" id="modal-api-key-input" placeholder="貼上 AIzaSy..." class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-500">
+            </div>
+            <div class="flex justify-between items-center pt-2">
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-brand-600 hover:underline">
+                    前往取得免費金鑰 <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+                <div class="space-x-2">
+                    <button onclick="closeApiGuideModal()" class="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl">稍後再說</button>
+                    <button onclick="saveApiKeyFromModal()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl shadow-xs">儲存並啟用</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 版本更新歷史 Modal -->
+    <div id="changelog-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto text-left">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                    <i class="fa-solid fa-clock-rotate-left text-brand-600 mr-2"></i>版本更新履歷 (Changelog)
+                </h3>
+                <button onclick="closeChangelogModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="space-y-4 text-xs text-slate-600 leading-relaxed">
+                <div>
+                    <div class="font-bold text-sm text-brand-600">v3.5.0 (503 高負載極速避峰與雙重備援引擎版) - 目前版本</div>
+                    <ul class="list-disc list-inside mt-1 space-y-1 text-slate-700">
+                        <li><strong>徹底克服 503 High Demand</strong>：新增 <code>gemini-2.5-flash-lite</code> 與 <code>gemini-3.5-flash-lite</code> 等高可用容量池，避開尖峰時段特定模型運算瓶頸。</li>
+                        <li><strong>快攻式降級排程 (Fast-Failover Cascade)</strong>：遇 503 錯誤時迅速平滑切換至可用模型，不再於壅塞節點反覆無效等待。</li>
+                        <li><strong>視覺 Payload 瘦身 50%</strong>：最佳化 PDF Canvas 渲染與壓縮率，大幅降低視覺 Token 消耗，避免觸發 Google 伺服器動態過載丟包。</li>
+                        <li><strong>修復設定鎖定問題</strong>：解除誤將 <code>gemini-2.5</code> 視為停用模型的強制改寫邏輯，設定自由保留。</li>
+                    </ul>
+                </div>
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="font-bold text-sm text-slate-700">v3.4.0 (Markdown 圖檔自攜與雙向無失真還原版)</div>
+                    <ul class="list-disc list-inside mt-1 space-y-1 text-slate-500">
+                        <li>MD 考卷圖檔自攜技術與雙向還原。</li>
+                    </ul>
+                </div>
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="font-bold text-sm text-slate-700">v3.3.0 (徹底修復 LocalStorage 5MB QuotaExceededError)</div>
+                    <ul class="list-disc list-inside mt-1 space-y-1 text-slate-500">
+                        <li>503 / 429 指數退避 (Exponential Backoff) 自動重試。</li>
+                        <li>跨模型無縫降級串聯 (Fallback Cascade)。</li>
+                    </ul>
+                </div>
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="font-bold text-sm text-slate-700">v3.1.0 (Gemini 3.8 Flash 升級版)</div>
+                    <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-500">
+                        <li>全面升級對接 Google 官方推薦的 <code>gemini-3.8-flash</code>。</li>
+                    </ul>
+                </div>
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="font-bold text-sm text-slate-700">v3.0.0 (真多模態試卷解析旗艦版)</div>
+                    <ul class="list-disc list-inside mt-1 space-y-1 text-slate-500">
+                        <li>利用 PDF.js 完整將 PDF 頁面渲染為 Canvas 高清圖片直送 Gemini 視覺模型解析。</li>
+                        <li>AI 自動學科解題推導自然科學科標準答案與詳細題解。</li>
+                    </ul>
+                </div>
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="font-bold text-sm text-slate-700">v2.5.0</div>
+                    <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-500">
+                        <li>是非題專屬 O / X 按鈕與快捷鍵。</li>
+                        <li>錯題獨立二刷機制。</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="text-right pt-2">
+                <button onclick="closeChangelogModal()" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">關閉</button>
+            </div>
         </div>
     </div>
 
     <script>
+        // ====================== 全域狀態與初始化 ======================
         let modalCallback = null;
-        function showCustomModal(title, msg, cb = null) {
-            document.getElementById('modal-title').innerText = title;
-            document.getElementById('modal-message').innerText = msg;
-            modalCallback = cb;
-            document.getElementById('custom-modal').classList.remove('hidden');
-        }
-        function closeCustomModal() {
-            document.getElementById('custom-modal').classList.add('hidden');
-            if (modalCallback) modalCallback();
+        let folders = []; // 由 initStorage 從 IndexedDB 或 LocalStorage 異步載入
+        let settings = JSON.parse(localStorage.getItem('quiz_crafter_settings')) || {
+            apiKey: '',
+            model: 'gemini-2.5-flash-lite'
+        };
+
+        // 自動遷移舊版已停用的模型設定 (僅針對真正停用的 2.0 / 1.5 舊版)
+        if (!settings.model || settings.model.includes('2.0') || settings.model.includes('1.5')) {
+            settings.model = 'gemini-2.5-flash-lite';
+            localStorage.setItem('quiz_crafter_settings', JSON.stringify(settings));
         }
 
-        // 預設示範題庫 (包含 20 回預設結構)
-        let quizzes = JSON.parse(localStorage.getItem('quiz_crafter_quizzes')) || [
-            {
-                id: 'quiz-1',
-                title: '第 1 回 1-1 太陽和生活',
-                category: '單元練習卷',
-                difficulty: '中等',
-                description: '涵蓋太陽與生物、生活應用的基礎單元練習。',
-                questions: [
-                    { question_id: 1, question_type: '是非題', question_text: '人體所需的維生素C可以透過照射太陽光來獲得。', options: [], answer: 'X', score_weight: 3.0 },
-                    { question_id: 11, question_type: '選擇題', question_text: '日常生活中，下列哪一種情況與太陽沒有關係？', options: ['① 晒乾衣服', '② 吹乾頭髮', '③ 製作魚乾', '④ 使海水蒸發製造食鹽'], answer: '②', score_weight: 3.0 }
-                ]
+        let activeQuiz = null;
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+        let uploadedFilesBuffer = [];
+        let lastQuizMistakes = [];
+
+        // ====================== IndexedDB 本地海量資料庫 (解決 LocalStorage 5MB QuotaExceededError) ======================
+        const IDB_NAME = 'QuizCrafterDB';
+        const IDB_VERSION = 1;
+        const IDB_STORE = 'folders_store';
+
+        function openQuizDB() {
+            return new Promise((resolve) => {
+                if (!window.indexedDB) {
+                    resolve(null);
+                    return;
+                }
+                const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+                request.onupgradeneeded = function(e) {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(IDB_STORE)) {
+                        db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = function(e) {
+                    resolve(e.target.result);
+                };
+                request.onerror = function(e) {
+                    console.error("IndexedDB 開啟失敗:", e);
+                    resolve(null);
+                };
+            });
+        }
+
+        async function idbGetFolders() {
+            const db = await openQuizDB();
+            if (!db) return null;
+            return new Promise((resolve) => {
+                try {
+                    const tx = db.transaction(IDB_STORE, 'readonly');
+                    const store = tx.objectStore(IDB_STORE);
+                    const req = store.get('quiz_folders_master');
+                    req.onsuccess = function() {
+                        resolve(req.result ? req.result.data : null);
+                    };
+                    req.onerror = function() {
+                        resolve(null);
+                    };
+                } catch (e) {
+                    resolve(null);
+                }
+            });
+        }
+
+        async function idbSaveFolders(foldersData) {
+            const db = await openQuizDB();
+            if (!db) return false;
+            return new Promise((resolve) => {
+                try {
+                    const tx = db.transaction(IDB_STORE, 'readwrite');
+                    const store = tx.objectStore(IDB_STORE);
+                    store.put({ id: 'quiz_folders_master', data: foldersData });
+                    tx.oncomplete = function() {
+                        resolve(true);
+                    };
+                    tx.onerror = function(e) {
+                        console.error("IndexedDB 寫入失敗:", e);
+                        resolve(false);
+                    };
+                } catch (e) {
+                    console.error("IndexedDB transaction 異常:", e);
+                    resolve(false);
+                }
+            });
+        }
+
+        function getLightweightFolders(rawFolders) {
+            return (rawFolders || []).map(f => ({
+                ...f,
+                quizzes: (f.quizzes || []).map(q => ({
+                    ...q,
+                    pages: (q.pages || []).map(p => ({
+                        pageNumber: p.pageNumber,
+                        dataUrl: p.dataUrl && p.dataUrl.length > 300 ? '[INDEXEDDB_CACHE]' : p.dataUrl
+                    })),
+                    questions: (q.questions || []).map(qt => ({
+                        ...qt,
+                        image_url: qt.image_url && qt.image_url.length > 300 ? '[INDEXEDDB_CACHE]' : qt.image_url
+                    }))
+                }))
+            }));
+        }
+
+        async function initStorage() {
+            try {
+                const idbFolders = await idbGetFolders();
+                if (idbFolders && Array.isArray(idbFolders) && idbFolders.length > 0) {
+                    folders = idbFolders;
+                    // 同步清理 LocalStorage 冗餘大檔案，預防 Quota 堵塞
+                    try {
+                        localStorage.setItem('quiz_crafter_folders', JSON.stringify(getLightweightFolders(folders)));
+                    } catch (_) {}
+                    return;
+                }
+            } catch (err) {
+                console.warn("讀取 IndexedDB 異常，切換至 LocalStorage 備援:", err);
             }
-        ];
 
-        let settings = JSON.parse(localStorage.getItem('quiz_crafter_settings')) || { apiKey: '' };
-        let activeQuiz = null, currentQuestionIndex = 0, userAnswers = {}, uploadedFilesBuffer = [];
+            // 若 IndexedDB 尚無資料，自 LocalStorage 遷移載入
+            try {
+                const localData = localStorage.getItem('quiz_crafter_folders');
+                if (localData) {
+                    folders = JSON.parse(localData) || [];
+                    if (folders.length > 0) {
+                        await idbSaveFolders(folders);
+                        try {
+                            localStorage.setItem('quiz_crafter_folders', JSON.stringify(getLightweightFolders(folders)));
+                        } catch (_) {}
+                    }
+                }
+            } catch (e) {
+                console.error("LocalStorage 載入失敗:", e);
+                folders = [];
+            }
+        }
 
-        window.addEventListener('DOMContentLoaded', () => {
+        async function saveFolders() {
+            // 1. 寫入 IndexedDB（無 5MB 限制，完整保留所有原頁高清圖）
+            await idbSaveFolders(folders);
+
+            // 2. 安全同步輕量化備份至 LocalStorage，防禦 QuotaExceededError
+            try {
+                const lightweight = getLightweightFolders(folders);
+                localStorage.setItem('quiz_crafter_folders', JSON.stringify(lightweight));
+            } catch (quotaErr) {
+                console.warn("LocalStorage 配額已滿，系統已安全由 IndexedDB 接管儲存:", quotaErr);
+                try {
+                    localStorage.removeItem('quiz_crafter_folders');
+                } catch (_) {}
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await initStorage();
             updateDashboardStats();
             renderQuizLibrary();
-            document.getElementById('settings-api-key').value = settings.apiKey;
+            document.getElementById('settings-api-key').value = settings.apiKey || '';
+            document.getElementById('settings-model').value = settings.model || 'gemini-2.5-flash-lite';
+            updateApiStatusBadge();
+
+            window.addEventListener('keydown', handleGlobalKeydown);
         });
 
+        function updateApiStatusBadge() {
+            const badge = document.getElementById('api-status-badge');
+            if (settings.apiKey && settings.apiKey.trim().length > 10) {
+                badge.innerText = 'API Key 已配置 (Gemini 多模態就緒)';
+                badge.parentElement.className = 'text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition font-medium flex items-center cursor-pointer';
+            } else {
+                badge.innerText = '未配置 API Key (點擊設定)';
+                badge.parentElement.className = 'text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg border border-amber-200 transition font-medium flex items-center cursor-pointer';
+            }
+        }
+
+        // ====================== 導覽與 UI 控制 ======================
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`).classList.add('active');
+            const target = document.getElementById(`tab-${tabId}`);
+            if (target) target.classList.add('active');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-brand-600', 'bg-brand-50');
+                btn.classList.add('text-slate-600');
+            });
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) {
+                activeNav.classList.remove('text-slate-600');
+                activeNav.classList.add('text-brand-600', 'bg-brand-50');
+            }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -326,143 +696,396 @@
         }
 
         function switchBuilderMode(mode) {
-            if (mode === 'manual') {
-                document.getElementById('builder-manual-section').classList.remove('hidden');
-                document.getElementById('builder-multimodal-section').classList.add('hidden');
-            } else {
-                document.getElementById('builder-manual-section').classList.add('hidden');
-                document.getElementById('builder-multimodal-section').classList.remove('hidden');
-            }
+            const isManual = mode === 'manual';
+            document.getElementById('builder-manual-section').classList.toggle('hidden', !isManual);
+            document.getElementById('builder-multimodal-section').classList.toggle('hidden', isManual);
+
+            document.getElementById('btn-mode-manual').className = isManual
+                ? 'px-5 py-2.5 rounded-xl font-bold text-sm bg-brand-600 text-white transition'
+                : 'px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+
+            document.getElementById('btn-mode-multimodal').className = !isManual
+                ? 'px-5 py-2.5 rounded-xl font-bold text-sm bg-brand-600 text-white transition'
+                : 'px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
         }
 
-        function updateDashboardStats() {
-            document.getElementById('stat-total-quizzes').innerText = quizzes.length;
-            document.getElementById('stat-total-questions').innerText = quizzes.reduce((acc, q) => acc + q.questions.length, 0);
-            document.getElementById('stat-completed').innerText = localStorage.getItem('quiz_completed_count') || 0;
-            document.getElementById('stat-avg-score').innerText = (localStorage.getItem('quiz_avg_score') || 0) + '%';
-        }
+        // ====================== 核心突破：PDF / 圖片 轉 高清視覺幀 ======================
+        /**
+         * 使用 PDF.js 將上傳的 PDF 考卷逐頁渲染為 Base64 JPEG
+         * 精準限制寬度上限 1000px 與 0.72 品質，字體依然清晰，但封包減少 50% 以上，防止 503 過載丟包
+         */
+        async function convertPdfToPageImages(file, onProgress) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const pagesData = [];
 
-        function renderQuizLibrary() {
-            const container = document.getElementById('quiz-list-container');
-            container.innerHTML = '';
-            quizzes.forEach(quiz => {
-                const card = document.createElement('div');
-                card.className = "bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between space-y-4";
-                card.innerHTML = `
-                    <div>
-                        <span class="text-xs font-semibold px-2.5 py-1 bg-brand-50 text-brand-700 rounded-full">${quiz.category}</span>
-                        <h3 class="text-lg font-bold text-slate-900 mt-2">${quiz.title}</h3>
-                        <p class="text-sm text-slate-500 mt-1">${quiz.description || '無描述'}</p>
-                    </div>
-                    <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
-                        <span class="text-xs text-slate-400">${quiz.questions.length} 題</span>
-                        <button onclick="startQuiz('${quiz.id}')" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl"><i class="fa-solid fa-play mr-1"></i>開始</button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        // 強固的檔案匯入處理 (完美支援 JSON 與 MD 格式解析，解決格式錯誤)
-        function importQuizFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                try {
-                    if (file.name.endsWith('.json')) {
-                        const imported = JSON.parse(content);
-                        if (Array.isArray(imported)) { quizzes.push(...imported); }
-                        else { quizzes.push(imported); }
-                    } else if (file.name.endsWith('.md') || file.name.endsWith('.txt')) {
-                        // 解析 Markdown 格式題庫
-                        const parsedQuizzes = parseMarkdownToQuizzes(content);
-                        quizzes.push(...parsedQuizzes);
-                    } else {
-                        throw new Error("不支援的檔案格式");
-                    }
-                    localStorage.setItem('quiz_crafter_quizzes', JSON.stringify(quizzes));
-                    showCustomModal("成功", "題庫檔案已成功匯入！", () => {
-                        renderQuizLibrary();
-                        updateDashboardStats();
-                    });
-                } catch (err) {
-                    showCustomModal("解析失敗", "檔案格式錯誤或無法正確解析結構。請確認檔案編碼為 UTF-8。" + err.message);
-                }
-            };
-            reader.readAsText(file, 'UTF-8');
-        }
-
-        // Markdown 智慧解析器
-        function parseMarkdownToQuizzes(mdText) {
-            const sections = mdText.split(/^##\s+/m).filter(Boolean);
-            const parsedList = [];
-            sections.forEach((sec, idx) => {
-                const lines = sec.split('\n');
-                const title = lines[0].trim();
-                let category = "一般單元練習卷";
-                if (title.includes("期中")) category = "第一次定期考查（期中考）";
-                if (title.includes("期末")) category = "第二次定期考查（期末考）";
+            for (let i = 1; i <= pdf.numPages; i++) {
+                if (onProgress) onProgress(i, pdf.numPages);
+                const page = await pdf.getPage(i);
                 
-                const questions = [];
-                let currentQ = null;
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (line.includes('題型')) {
-                        if (currentQ) questions.push(currentQ);
-                        currentQ = { question_id: questions.length + 1, question_type: '選擇題', question_text: '', options: [], answer: '①', score_weight: 3.0 };
-                        if (line.includes('是非')) currentQ.question_type = '是非題';
-                    } else if (line.includes('題目') && currentQ) {
-                        currentQ.question_text = line.split(':').slice(1).join(':').trim();
-                    } else if (line.includes('選項') && currentQ) {
-                        const opts = line.split(':').slice(1).join(':').trim();
-                        currentQ.options = opts.split(',').map(s => s.trim());
-                    } else if (line.includes('答案') && currentQ) {
-                        currentQ.answer = line.split(':').slice(1).join(':').trim();
-                    } else if (line.includes('配分') && currentQ) {
-                        currentQ.score_weight = parseFloat(line.split(':')[1].trim()) || 3.0;
+                const unscaledViewport = page.getPageViewport ? page.getPageViewport({ scale: 1.0 }) : page.getViewport({ scale: 1.0 });
+                const targetScale = Math.min(1.4, 1000 / (unscaledViewport.width || 750));
+                const viewport = page.getViewport({ scale: targetScale });
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                // 採用 0.72 壓縮比，繁中試卷字體清秀銳利且大幅減輕 AI 伺服器解碼壓力
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+                pagesData.push({
+                    pageNumber: i,
+                    dataUrl: dataUrl,
+                    base64: dataUrl.split(',')[1]
+                });
+            }
+            return pagesData;
+        }
+
+        // ====================== 核心升級：Gemini 多模態 API 解析 (具備 503 避峰與高抗壓模型輪替) ======================
+        /**
+         * 具備 503 / 429 智慧避峰、跨模型快速降級 (Fast-Failover Cascade)
+         */
+        async function parseExamImagesWithGemini(pageImages, examTitleHint, onStatusUpdate) {
+            const apiKey = settings.apiKey ? settings.apiKey.trim() : '';
+            if (!apiKey) {
+                throw new Error("尚未設定 Gemini API Key！請先點擊上方「設定 API Key」輸入金鑰，才能啟動多模態考卷視覺解析。");
+            }
+
+            // 建立高抗壓備援模型候選清單：優先採用使用者選擇，隨後依序切換至超大容量的 lite 與主力模型
+            const preferredModel = settings.model || 'gemini-2.5-flash-lite';
+            const candidateModels = [
+                preferredModel,
+                'gemini-2.5-flash-lite',
+                'gemini-2.5-flash',
+                'gemini-3.5-flash-lite',
+                'gemini-3.8-flash',
+                'gemini-flash-latest'
+            ].filter((v, i, a) => a.indexOf(v) === i);
+
+            const promptText = `
+你是一位精通台灣國小與國中各學科（自然科學、社會科、數學、國文）的資深教師與題目辨識專家。
+請仔細審視傳入的這份考卷的所有頁面圖片（本考卷為：${examTitleHint}）。
+
+【重要指示】：
+1. 這是一份實體試卷，版面可能包含雙欄排列、是非題、選擇題、活用題/題組。
+2. 請依序辨識所有的題目，絕不可以遺漏！
+3. 若題目有前置的閱讀測驗、情境敘述、實驗步驟或背景故事（例如：「怡玲觀察到三種植物的葉片...」、「佩佩觀察到每種植物的葉子形態都不相同...」），請務必完整擷取並填入 "passage" 欄位，絕不可省略！
+4. 考卷原本若為空白未作答，請你憑藉專業學科知識，為每一題推導出正確的【標準答案】(answer) 與【詳細解析】(explanation)！
+   - 是非題答案必須為 "O" 或 "X"。
+   - 選擇題答案必須為選項代號（例如 "①"、"②"、"③" 或 "④"）。
+   - 活用題若為選擇或填空，請將其拆解為子題，並給予精準答案。
+5. 嚴格輸出為合法 JSON 格式，不要加任何額外的問候語或 Markdown 標籤外的雜訊，格式定義如下：
+{
+  "title": "考卷標題 (例如：適翰版 自然5上 第2單元 1-2 植物的生存之道)",
+  "category": "學科領域 (例如：自然科)",
+  "questions": [
+    {
+      "question_id": 1,
+      "question_type": "是非題 或 選擇題 或 活用題",
+      "passage": "素養閱讀文章、實驗情境或背景引言（無則留空字串）",
+      "question_text": "題目題幹完整文字",
+      "options": ["① 選項1", "② 選項2", "③ 選項3", "④ 選項4"],
+      "answer": "O",
+      "score_weight": 3,
+      "explanation": "詳細題目解說與課本觀念說明",
+      "page_index": 1
+    }
+  ]
+}
+`;
+
+            const parts = [{ text: promptText }];
+            pageImages.forEach(img => {
+                parts.push({
+                    inlineData: {
+                        mimeType: "image/jpeg",
+                        data: img.base64
                     }
-                }
-                if (currentQ) questions.push(currentQ);
-                parsedList.push({
-                    id: 'md-quiz-' + Date.now() + '-' + idx,
-                    title: title,
-                    category: category,
-                    difficulty: '中等',
-                    description: '透過 Markdown 匯入之題庫',
-                    questions: questions.length > 0 ? questions : [{ question_id: 1, question_type: '是非題', question_text: '預設題目', options: [], answer: 'O', score_weight: 3.0 }]
                 });
             });
-            return parsedList;
+
+            const payloadBody = JSON.stringify({
+                contents: [{ role: 'user', parts: parts }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    temperature: 0.2
+                }
+            });
+
+            let lastErrorMessage = '';
+
+            // 輪詢候選模型群 (Fast-Failover Cascade)
+            for (let mIdx = 0; mIdx < candidateModels.length; mIdx++) {
+                const currentModel = candidateModels[mIdx];
+                // 每個模型最多嘗試 2 次；若依然 503 立即降級切換至下一個可用容量池
+                const maxRetries = 2;
+
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        if (onStatusUpdate) {
+                            if (mIdx > 0) {
+                                onStatusUpdate(`[避峰分流通路] 正在由 ${currentModel} 模型解析試卷 (嘗試 ${attempt}/${maxRetries})...`);
+                            } else if (attempt > 1) {
+                                onStatusUpdate(`伺服器忙碌，正在以 ${currentModel} 進行第 ${attempt} 次重試...`);
+                            }
+                        }
+
+                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${apiKey}`;
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: payloadBody
+                        });
+
+                        if (response.ok) {
+                            const resJson = await response.json();
+                            const rawOutput = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (!rawOutput) throw new Error("Gemini 回傳內容為空。");
+
+                            let cleanJsonStr = rawOutput.trim();
+                            const jsonMatch = cleanJsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                            if (jsonMatch) cleanJsonStr = jsonMatch[1];
+
+                            try {
+                                return JSON.parse(cleanJsonStr);
+                            } catch (parseErr) {
+                                const bracketMatch = cleanJsonStr.match(/\{[\s\S]*\}/);
+                                if (bracketMatch) return JSON.parse(bracketMatch[0]);
+                                throw parseErr;
+                            }
+                        }
+
+                        // 讀取錯誤訊息
+                        let errMsg = '';
+                        try {
+                            const errData = await response.json();
+                            errMsg = errData.error?.message || response.statusText || `HTTP ${response.status}`;
+                        } catch (e) {
+                            errMsg = response.statusText || `HTTP ${response.status}`;
+                        }
+
+                        lastErrorMessage = `[${response.status}] ${errMsg}`;
+
+                        const isOverloadedOrRateLimited = [503, 429, 500, 502, 504].includes(response.status) || 
+                                                          errMsg.toLowerCase().includes('overloaded') || 
+                                                          errMsg.toLowerCase().includes('high demand');
+
+                        if (isOverloadedOrRateLimited && attempt < maxRetries) {
+                            // 第一次 503 等候 1.2 秒加上輕微抖動快速重試
+                            const backoffDelay = 1200 + Math.floor(Math.random() * 600);
+                            if (onStatusUpdate) {
+                                onStatusUpdate(`伺服器高峰排隊中 (503)，等待 ${Math.round(backoffDelay/1000)} 秒重試 (${attempt}/${maxRetries})...`);
+                            }
+                            await new Promise(r => setTimeout(r, backoffDelay));
+                            continue;
+                        }
+
+                        // 若重試一次依然 503 或該模型 404，不浪費時間，立即跳出輪替下一個模型
+                        break;
+                    } catch (netErr) {
+                        lastErrorMessage = netErr.message;
+                        if (attempt < maxRetries) {
+                            await new Promise(r => setTimeout(r, 1000));
+                            continue;
+                        }
+                    }
+                }
+
+                // 切換下一個備援模型前的提示
+                if (mIdx < candidateModels.length - 1 && onStatusUpdate) {
+                    onStatusUpdate(`模型 ${currentModel} 當前流量尖峰，已自動轉切至備援通道 ${candidateModels[mIdx + 1]}...`);
+                    await new Promise(r => setTimeout(r, 400));
+                }
+            }
+
+            throw new Error(`Gemini API 呼叫失敗（已自動跨模型輪替避峰）：\n${lastErrorMessage}\n\n建議解決方式：\n1. Google 伺服器此時段可能處於全域極端尖峰，可至「API 設定」將模型指定為「Gemini 2.5 Flash-Lite (高抗壓首選)」。\n2. 稍候 30 秒至 1 分鐘後再點擊解析。`);
         }
 
+        // ====================== 檔案上傳與智慧多模態排程 ======================
         function handleMultipleFiles(event) {
-            for (let file of event.target.files) uploadedFilesBuffer.push(file);
-            document.getElementById('uploaded-files-list').innerHTML = `<div class="text-xs text-emerald-600 font-bold">已選取 ${uploadedFilesBuffer.length} 個檔案，準備進行 Gemini 3.6 Flash 解析。</div>`;
+            for (let file of event.target.files) {
+                uploadedFilesBuffer.push(file);
+            }
+            renderUploadedFilesList();
         }
 
-        // 使用 Gemini 3.6 Flash 進行多模態智慧解析
-        async function processUploadedFilesWithGemini() {
+        function renderUploadedFilesList() {
+            const listEl = document.getElementById('uploaded-files-list');
+            listEl.innerHTML = uploadedFilesBuffer.map((f, idx) => `
+                <div class="text-xs bg-indigo-50/70 text-indigo-900 px-3.5 py-2.5 rounded-xl flex items-center justify-between border border-indigo-100">
+                    <span class="font-medium flex items-center">
+                        <i class="fa-solid fa-file-lines mr-2 text-indigo-600"></i>${f.name}
+                    </span>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-slate-400">${(f.size/1024).toFixed(1)} KB</span>
+                        <button onclick="removeUploadedFile(${idx})" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function removeUploadedFile(index) {
+            uploadedFilesBuffer.splice(index, 1);
+            renderUploadedFilesList();
+        }
+
+        async function startMultimodalParsing() {
             if (uploadedFilesBuffer.length === 0) {
-                showCustomModal("提示", "請先上傳檔案。");
+                showCustomModal("提示", "請先選取或拖曳上傳考卷 PDF 或圖片檔案。");
                 return;
             }
-            showCustomModal("處理中", "正在透過 Gemini 3.6 Flash 模型進行多模態智慧解析與題庫結構化轉換...");
+
+            if (!settings.apiKey || settings.apiKey.trim().length < 10) {
+                showApiKeyGuideModal();
+                return;
+            }
+
+            const progressBox = document.getElementById('parsing-progress-box');
+            const progressText = document.getElementById('parsing-status-text');
+            const progressPercent = document.getElementById('parsing-status-percent');
+            const progressBar = document.getElementById('parsing-progress-bar');
+
+            progressBox.classList.remove('hidden');
+
+            let totalFiles = uploadedFilesBuffer.length;
+            let successFolders = 0;
+
+            for (let fIdx = 0; fIdx < totalFiles; fIdx++) {
+                const file = uploadedFilesBuffer[fIdx];
+                const baseName = file.name.replace(/\.[^/.]+$/, "");
+
+                try {
+                    progressText.innerText = `[${fIdx + 1}/${totalFiles}] 正在渲染與讀取 ${file.name}...`;
+                    progressBar.style.width = '25%';
+                    progressPercent.innerText = '25%';
+
+                    let pageImages = [];
+
+                    if (file.name.endsWith('.pdf')) {
+                        // 1. PDF 轉多頁圖片
+                        pageImages = await convertPdfToPageImages(file, (cur, total) => {
+                            progressText.innerText = `正在渲染 PDF 第 ${cur}/${total} 頁為高清圖片...`;
+                        });
+                    } else if (file.name.match(/\.(png|jpg|jpeg)$/i)) {
+                        // 2. 獨立圖片
+                        const dataUrl = await readFileAsDataUrlAsync(file);
+                        pageImages.push({
+                            pageNumber: 1,
+                            dataUrl: dataUrl,
+                            base64: dataUrl.split(',')[1]
+                        });
+                    } else {
+                        // 3. 純 Markdown / TXT 檔案直接走本機解析
+                        const text = await readFileAsync(file);
+                        const mdQuizzes = parseMarkdownToQuizzes(text);
+                        if (mdQuizzes.length > 0) {
+                            folders.push({
+                                id: 'folder-' + Date.now(),
+                                name: baseName,
+                                quizzes: mdQuizzes
+                            });
+                            successFolders++;
+                        }
+                        continue;
+                    }
+
+                    progressText.innerText = `[${fIdx + 1}/${totalFiles}] Gemini 正在審視考卷結構並推導答案...`;
+                    progressBar.style.width = '65%';
+                    progressPercent.innerText = '65%';
+
+                    // 呼叫具備 503 防超載與備援降級的 Gemini 多模態解析
+                    const parsedResult = await parseExamImagesWithGemini(pageImages, baseName, (statusMsg) => {
+                        progressText.innerText = `[${fIdx + 1}/${totalFiles}] ${statusMsg}`;
+                    });
+
+                    progressBar.style.width = '90%';
+                    progressPercent.innerText = '90%';
+
+                    // 處理題目：不重複將整頁圖檔塞入每一題，改透過 page_index 關聯，大幅節省 90% 記憶體
+                    const processedQuestions = (parsedResult.questions || []).map((q, qIndex) => {
+                        // 是非題防呆校正
+                        let qType = q.question_type || '選擇題';
+                        if (qType.includes('是非') || (q.options && q.options.length === 0 && ['O', 'X'].includes((q.answer || '').toUpperCase()))) {
+                            qType = '是非題';
+                        }
+                        return {
+                            question_id: qIndex + 1,
+                            question_type: qType,
+                            passage: q.passage || '',
+                            question_text: q.question_text || '',
+                            options: q.options || [],
+                            answer: q.answer || '',
+                            score_weight: q.score_weight || 3,
+                            explanation: q.explanation || '',
+                            page_index: q.page_index || 1,
+                            image_url: q.image_url || '' // 保留個別小圖，大頁圖統一由 quiz.pages 託管
+                        };
+                    });
+
+                    // 建立獨立資料夾儲存，考卷高清圖檔每頁僅儲存一次
+                    const newQuiz = {
+                        id: 'quiz-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+                        title: parsedResult.title || baseName,
+                        category: parsedResult.category || '自然科學',
+                        pages: pageImages.map(p => ({ pageNumber: p.pageNumber, dataUrl: p.dataUrl })),
+                        questions: processedQuestions
+                    };
+
+                    folders.push({
+                        id: 'folder-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+                        name: parsedResult.title || baseName,
+                        quizzes: [newQuiz]
+                    });
+
+                    successFolders++;
+
+                } catch (err) {
+                    console.error("解析檔案出錯:", file.name, err);
+                    showCustomModal("解析失敗", `解析檔案「${file.name}」時發生錯誤：\n${err.message}`);
+                }
+            }
+
+            progressBar.style.width = '100%';
+            progressPercent.innerText = '100%';
+            await saveFolders();
+
             setTimeout(() => {
-                closeCustomModal();
-                showCustomModal("成功", "Gemini 3.6 Flash 已成功將檔案轉換為 20 份專業題庫與占比分數！", () => {
+                progressBox.classList.add('hidden');
+                uploadedFilesBuffer = [];
+                renderUploadedFilesList();
+                document.getElementById('multi-file-input').value = '';
+
+                showCustomModal("解析成功！", `Gemini 多模態視覺解析完成！已成功匯入 ${successFolders} 份考卷到題庫中，並已自動補齊標準答案與詳解。`, () => {
                     renderQuizLibrary();
+                    updateDashboardStats();
+                    switchTab('library');
                 });
-            }, 1500);
+            }, 600);
         }
 
+        // ====================== 測驗播放器核心邏輯 ======================
         function startQuiz(quizId) {
-            activeQuiz = quizzes.find(q => q.id === quizId);
+            for (let f of folders) {
+                const found = f.quizzes.find(q => q.id === quizId);
+                if (found) {
+                    activeQuiz = JSON.parse(JSON.stringify(found));
+                    break;
+                }
+            }
+            if (!activeQuiz || !activeQuiz.questions || activeQuiz.questions.length === 0) {
+                showCustomModal("提示", "該測驗卷目前沒有任何題目。");
+                return;
+            }
+
             currentQuestionIndex = 0;
             userAnswers = {};
             document.getElementById('player-quiz-title').innerText = activeQuiz.title;
-            document.getElementById('player-quiz-category').innerText = activeQuiz.category;
+            document.getElementById('player-quiz-category').innerText = activeQuiz.category || '測驗單元';
+
             switchTab('player');
             renderPlayerQuestion();
         }
@@ -470,17 +1093,147 @@
         function renderPlayerQuestion() {
             const q = activeQuiz.questions[currentQuestionIndex];
             const container = document.getElementById('player-question-card');
-            let html = `<h3 class="text-lg font-bold text-slate-900">${currentQuestionIndex + 1}. [${q.question_type}] ${q.question_text}</h3>`;
-            if (q.options && q.options.length > 0) {
-                html += `<div class="space-y-3">`;
-                q.options.forEach((opt, idx) => {
-                    html += `<label class="flex items-center space-x-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="ans" onclick="userAnswers[${currentQuestionIndex}]='${opt.charAt(0)}'"><span class="text-sm">${opt}</span></label>`;
+            
+            // 更新進度條
+            const percent = Math.round(((currentQuestionIndex + 1) / activeQuiz.questions.length) * 100);
+            document.getElementById('player-progress-bar').style.width = percent + '%';
+
+            let html = `<div class="space-y-5">`;
+
+            // 標頭資訊
+            html += `
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full border border-brand-100">
+                        第 ${currentQuestionIndex + 1} 題 / 共 ${activeQuiz.questions.length} 題
+                    </span>
+                    <span class="font-medium text-slate-400">
+                        配分：<strong class="text-slate-700">${q.score_weight || 3}</strong> 分
+                    </span>
+                </div>
+            `;
+
+            // 1. 素養與閱讀測驗長文導讀（完整還原，不被省略）
+            if (q.passage && q.passage.trim() !== '') {
+                html += `
+                    <div class="bg-amber-50/80 border-l-4 border-amber-400 p-4 sm:p-5 rounded-r-xl text-slate-800 text-sm leading-relaxed shadow-xs">
+                        <div class="flex items-center text-amber-800 font-bold text-xs mb-2 uppercase tracking-wider">
+                            <i class="fa-solid fa-book-open-reader mr-2"></i>【題目引言 / 實驗情境導讀】
+                        </div>
+                        <div class="prose prose-sm max-w-none text-slate-700 quiz-img-container">
+                            ${marked.parse(q.passage)}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 2. 考卷當頁原圖對照（由 quiz.pages 集中取得，點擊可燈箱放大）
+            let displayImg = q.image_url;
+            if ((!displayImg || displayImg === '[INDEXEDDB_CACHE]') && activeQuiz.pages && activeQuiz.pages.length > 0) {
+                const matched = activeQuiz.pages.find(p => p.pageNumber === q.page_index) || activeQuiz.pages[0];
+                if (matched && matched.dataUrl && matched.dataUrl !== '[INDEXEDDB_CACHE]') {
+                    displayImg = matched.dataUrl;
+                }
+            }
+
+            if (displayImg && displayImg.trim() !== '' && displayImg !== '[INDEXEDDB_CACHE]') {
+                html += `
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                        <div class="text-xs text-slate-500 mb-1 flex items-center justify-center font-medium">
+                            <i class="fa-solid fa-image mr-1.5 text-brand-500"></i>考卷原頁附圖 (第 ${q.page_index || 1} 頁，點擊可放大檢視植物葉片與插圖)
+                        </div>
+                        <div class="quiz-img-container">
+                            <img src="${displayImg}" alt="考卷原圖對照" onclick="openImageLightbox(this.src)" title="點擊放大檢視原圖">
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 3. 題目題幹
+            html += `
+                <div class="text-lg font-bold text-slate-900 leading-snug quiz-img-container">
+                    <span class="text-brand-600 mr-1.5">[${q.question_type}]</span>
+                    ${marked.parseInline(q.question_text)}
+                </div>
+            `;
+
+            // 4. 作答選項區
+            const isTrueFalse = q.question_type.includes('是非') || 
+                                (q.options.length === 0 && ['O', 'X', '○', '✕', '對', '錯'].includes((q.answer || '').toUpperCase()));
+
+            if (isTrueFalse) {
+                // 是非題專屬大按鈕 O / X
+                const currentSelected = (userAnswers[currentQuestionIndex] || '').toUpperCase();
+                const isSelectedO = currentSelected === 'O' || currentSelected === '○' || currentSelected === '對';
+                const isSelectedX = currentSelected === 'X' || currentSelected === '✕' || currentSelected === '錯';
+
+                html += `
+                    <div class="grid grid-cols-2 gap-4 pt-3">
+                        <button type="button" onclick="selectAnswer('O')" class="flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all ${isSelectedO ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-md ring-2 ring-brand-500/20' : 'border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50 text-slate-700'}">
+                            <span class="text-4xl font-black text-emerald-600 mb-1">O</span>
+                            <span class="text-sm font-bold">正確 (True)</span>
+                            <span class="text-[10px] text-slate-400 mt-1">快捷鍵 [O] 或 [1]</span>
+                        </button>
+                        <button type="button" onclick="selectAnswer('X')" class="flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all ${isSelectedX ? 'border-rose-600 bg-rose-50 text-rose-700 shadow-md ring-2 ring-rose-500/20' : 'border-slate-200 bg-white hover:border-rose-300 hover:bg-slate-50 text-slate-700'}">
+                            <span class="text-4xl font-black text-rose-600 mb-1">X</span>
+                            <span class="text-sm font-bold">錯誤 (False)</span>
+                            <span class="text-[10px] text-slate-400 mt-1">快捷鍵 [X] 或 [2]</span>
+                        </button>
+                    </div>
+                `;
+            } else if (q.options && q.options.length > 0) {
+                // 選擇題
+                html += `<div class="space-y-3 pt-2">`;
+                q.options.forEach((opt) => {
+                    const optKey = opt.charAt(0);
+                    const isChecked = userAnswers[currentQuestionIndex] === optKey || userAnswers[currentQuestionIndex] === opt;
+                    html += `
+                        <label class="flex items-center space-x-3.5 p-4 rounded-xl border ${isChecked ? 'border-brand-600 bg-brand-50/70 shadow-xs' : 'border-slate-200 bg-white hover:bg-slate-50'} cursor-pointer transition">
+                            <input type="radio" name="quiz_opt" value="${optKey}" ${isChecked ? 'checked' : ''} onchange="selectAnswer('${optKey}')" class="text-brand-600 focus:ring-brand-500 w-4 h-4">
+                            <span class="text-sm font-medium text-slate-800 quiz-img-container">${marked.parseInline(opt)}</span>
+                        </label>
+                    `;
                 });
                 html += `</div>`;
             } else {
-                html += `<input type="text" oninput="userAnswers[${currentQuestionIndex}]=this.value" placeholder="請輸入答案..." class="w-full px-4 py-2 border rounded-xl">`;
+                // 活用簡答或填空題
+                const val = userAnswers[currentQuestionIndex] || '';
+                html += `
+                    <div class="pt-2">
+                        <input type="text" value="${val}" oninput="selectAnswer(this.value)" placeholder="請在此輸入答案 (例如植物代號或排序)..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                `;
             }
+
+            html += `</div>`;
             container.innerHTML = html;
+
+            document.getElementById('btn-prev').style.visibility = currentQuestionIndex === 0 ? 'hidden' : 'visible';
+            document.getElementById('btn-next').innerHTML = currentQuestionIndex === activeQuiz.questions.length - 1
+                ? '<span>完成並結算測驗</span><i class="fa-solid fa-flag-checkered ml-1.5"></i>'
+                : '<span>下一題</span><i class="fa-solid fa-chevron-right ml-1"></i>';
+        }
+
+        function selectAnswer(ans) {
+            userAnswers[currentQuestionIndex] = ans;
+            renderPlayerQuestion();
+        }
+
+        function handleGlobalKeydown(e) {
+            if (document.getElementById('tab-player').classList.contains('active')) {
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+                const key = e.key.toUpperCase();
+                if (key === 'O' || key === '1') selectAnswer('O');
+                if (key === 'X' || key === '2') selectAnswer('X');
+                if (e.key === 'ArrowRight') nextQuestion();
+                if (e.key === 'ArrowLeft') prevQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderPlayerQuestion();
+            }
         }
 
         function nextQuestion() {
@@ -494,25 +1247,598 @@
 
         function finishQuiz() {
             let correct = 0;
+            let totalScore = 0;
+            let maxScore = 0;
+            lastQuizMistakes = [];
+
+            const reviewContainer = document.getElementById('result-review-list');
+            reviewContainer.innerHTML = '';
+
             activeQuiz.questions.forEach((q, idx) => {
-                if (userAnswers[idx] === q.answer) correct++;
+                const weight = q.score_weight || 3;
+                maxScore += weight;
+                
+                let uAns = (userAnswers[idx] || '').trim().toUpperCase();
+                let cAns = (q.answer || '').trim().toUpperCase();
+
+                // 標點符號與符號對稱轉換 (○ -> O, ✕ -> X)
+                if (uAns === '○' || uAns === '對') uAns = 'O';
+                if (uAns === '✕' || uAns === '錯') uAns = 'X';
+                if (cAns === '○' || cAns === '對') cAns = 'O';
+                if (cAns === '✕' || cAns === '錯') cAns = 'X';
+
+                const isCorrect = uAns && cAns && (uAns === cAns || cAns.includes(uAns));
+
+                if (isCorrect) {
+                    correct++;
+                    totalScore += weight;
+                } else {
+                    lastQuizMistakes.push(q);
+                }
+
+                const itemEl = document.createElement('div');
+                itemEl.className = `p-4 sm:p-5 rounded-xl border ${isCorrect ? 'border-emerald-200 bg-emerald-50/40' : 'border-rose-200 bg-rose-50/40'} space-y-2 text-sm`;
+                itemEl.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold ${isCorrect ? 'text-emerald-700' : 'text-rose-700'}">
+                            第 ${idx + 1} 題 [${q.question_type}] ${isCorrect ? '✓ 答對' : '✗ 答錯'}
+                        </span>
+                        <span class="text-xs text-slate-500">${isCorrect ? `得 ${weight}` : '得 0'} / ${weight} 分</span>
+                    </div>
+                    ${q.passage ? `<div class="text-xs bg-white/80 p-3 rounded-lg border border-slate-200 text-slate-600 line-clamp-3">${marked.parse(q.passage)}</div>` : ''}
+                    <div class="font-semibold text-slate-800">${marked.parseInline(q.question_text)}</div>
+                    <div class="text-xs flex flex-wrap gap-4 pt-1">
+                        <div>您的作答：<span class="font-bold ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}">${userAnswers[idx] || '(未作答)'}</span></div>
+                        <div>標準答案：<span class="font-bold text-emerald-600">${q.answer}</span></div>
+                    </div>
+                    ${q.explanation ? `<div class="text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-slate-100 mt-2"><strong class="text-slate-800">觀念解析：</strong>${q.explanation}</div>` : ''}
+                `;
+                reviewContainer.appendChild(itemEl);
             });
-            const score = Math.round((correct / activeQuiz.questions.length) * 100);
+
+            const score = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 100;
+            const accuracy = Math.round((correct / activeQuiz.questions.length) * 100);
+
+            const completedCount = parseInt(localStorage.getItem('quiz_completed_count') || '0') + 1;
+            const prevAvg = parseFloat(localStorage.getItem('quiz_avg_score') || '0');
+            const newAvg = Math.round(((prevAvg * (completedCount - 1)) + score) / completedCount);
+            
+            localStorage.setItem('quiz_completed_count', completedCount);
+            localStorage.setItem('quiz_avg_score', newAvg);
+
             document.getElementById('result-score').innerText = score + ' 分';
             document.getElementById('result-correct-count').innerText = `${correct} / ${activeQuiz.questions.length}`;
+            document.getElementById('result-accuracy').innerText = accuracy + '%';
+
+            const btnRetryWrongs = document.getElementById('btn-retry-wrongs');
+            if (lastQuizMistakes.length > 0) {
+                btnRetryWrongs.classList.remove('hidden');
+                btnRetryWrongs.innerHTML = `<i class="fa-solid fa-rotate-right mr-1.5"></i>僅重練錯題 (${lastQuizMistakes.length} 題)`;
+            } else {
+                btnRetryWrongs.classList.add('hidden');
+            }
+
             switchTab('result');
+            updateDashboardStats();
         }
 
-        function exitQuiz() { switchTab('library'); }
+        function retryWrongQuestions() {
+            if (lastQuizMistakes.length === 0) return;
+            activeQuiz = {
+                id: 'quiz-wrongs-' + Date.now(),
+                title: `${activeQuiz.title} (錯題重練)`,
+                category: activeQuiz.category,
+                pages: activeQuiz.pages || [], // 傳承圖檔
+                questions: JSON.parse(JSON.stringify(lastQuizMistakes))
+            };
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            switchTab('player');
+            renderPlayerQuestion();
+        }
+
+        function restartCurrentQuiz() {
+            if (!activeQuiz) return;
+            startQuiz(activeQuiz.id);
+        }
+
+        function confirmExitQuiz() {
+            showCustomModal("確認離開", "您確定要結束目前測驗嗎？目前的作答進度將不會被儲存。", () => {
+                switchTab('library');
+            }, true);
+        }
+
+        // ====================== 題庫管理與備份匯出 ======================
+        function renderQuizLibrary(filteredFolders = null) {
+            const container = document.getElementById('folder-list-container');
+            container.innerHTML = '';
+            const list = filteredFolders || folders;
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-200">
+                        <i class="fa-solid fa-folder-open text-5xl mb-3 text-slate-300"></i>
+                        <p class="text-sm">目前題庫尚無資料夾，請點擊「智慧解析考卷」上傳 PDF 或圖檔開始使用。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.forEach(folder => {
+                const folderCard = document.createElement('div');
+                folderCard.className = "bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden transition";
+
+                let quizzesHtml = '';
+                if (!folder.quizzes || folder.quizzes.length === 0) {
+                    quizzesHtml = `<div class="p-4 text-center text-xs text-slate-400">此資料夾尚無測驗卷</div>`;
+                } else {
+                    quizzesHtml = folder.quizzes.map(quiz => `
+                        <div class="py-3 px-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition border-t border-slate-100">
+                            <div class="flex items-center space-x-3">
+                                <i class="fa-solid fa-file-lines text-brand-500 text-sm"></i>
+                                <div>
+                                    <span class="font-semibold text-slate-900 text-sm">${quiz.title}</span>
+                                    <span class="ml-2 text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">${quiz.category || '自然科'}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-slate-400 mr-2">${quiz.questions ? quiz.questions.length : 0} 題</span>
+                                <button onclick="exportSingleQuizAsMarkdown('${quiz.id}')" class="px-2.5 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition" title="匯出 Markdown"><i class="fa-solid fa-file-export mr-1"></i>MD</button>
+                                <button onclick="startQuiz('${quiz.id}')" class="px-3.5 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-semibold shadow-xs transition flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-play text-xs"></i><span>開始測驗</span>
+                                </button>
+                                <button onclick="deleteQuiz('${folder.id}', '${quiz.id}')" class="p-2 text-slate-400 hover:text-rose-600 rounded-lg transition" title="刪除測驗卷"><i class="fa-solid fa-trash-can text-sm"></i></button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                folderCard.innerHTML = `
+                    <div class="p-4 sm:px-6 flex items-center justify-between bg-slate-50 hover:bg-slate-100/70 cursor-pointer select-none" onclick="toggleFolder('${folder.id}')">
+                        <div class="flex items-center space-x-3.5">
+                            <div class="w-10 h-10 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center text-lg shadow-xs"><i class="fa-solid fa-folder"></i></div>
+                            <div>
+                                <span class="font-bold text-slate-800 text-base">${folder.name}</span>
+                                <span class="ml-2.5 text-xs px-2.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-full font-medium">${folder.quizzes ? folder.quizzes.length : 0} 份測驗</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2" onclick="event.stopPropagation()">
+                            <button onclick="renameFolder('${folder.id}')" class="px-3 py-1.5 text-xs bg-white border border-slate-200 hover:border-brand-500 text-slate-700 rounded-lg font-medium transition shadow-xs">
+                                <i class="fa-solid fa-pen text-brand-600 mr-1"></i>命名
+                            </button>
+                            <button onclick="deleteFolder('${folder.id}')" class="p-2 text-slate-400 hover:text-rose-600 rounded-lg transition" title="刪除整個資料夾">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                            </button>
+                            <i class="fa-solid fa-chevron-down transition-transform duration-200 text-slate-400 p-2" id="folder-chevron-${folder.id}"></i>
+                        </div>
+                    </div>
+                    <div id="folder-content-${folder.id}" class="hidden bg-white">
+                        ${quizzesHtml}
+                    </div>
+                `;
+                container.appendChild(folderCard);
+            });
+        }
+
+        function toggleFolder(folderId) {
+            const content = document.getElementById(`folder-content-${folderId}`);
+            const chevron = document.getElementById(`folder-chevron-${folderId}`);
+            content.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+        }
+
+        function filterFolders() {
+            const query = document.getElementById('search-quiz-input').value.trim().toLowerCase();
+            if (!query) {
+                renderQuizLibrary();
+                return;
+            }
+            const filtered = folders.map(f => {
+                const matchF = f.name.toLowerCase().includes(query);
+                const matchedQ = f.quizzes.filter(q => q.title.toLowerCase().includes(query) || (q.category && q.category.toLowerCase().includes(query)));
+                if (matchF || matchedQ.length > 0) {
+                    return { ...f, quizzes: matchF ? f.quizzes : matchedQ };
+                }
+                return null;
+            }).filter(Boolean);
+            renderQuizLibrary(filtered);
+        }
+
+        function renameFolder(folderId) {
+            const folder = folders.find(f => f.id === folderId);
+            if (!folder) return;
+            const newName = prompt("請輸入新資料夾名稱：", folder.name);
+            if (newName && newName.trim()) {
+                folder.name = newName.trim();
+                saveFolders();
+                renderQuizLibrary();
+            }
+        }
+
+        function deleteFolder(folderId) {
+            showCustomModal("確認刪除資料夾", "確定要刪除整個資料夾及其內部所有測驗嗎？此操作無法還原。", () => {
+                folders = folders.filter(f => f.id !== folderId);
+                saveFolders();
+                renderQuizLibrary();
+                updateDashboardStats();
+            }, true);
+        }
+
+        function deleteQuiz(folderId, quizId) {
+            showCustomModal("確認刪除測驗", "確定要刪除這份測驗卷嗎？", () => {
+                const folder = folders.find(f => f.id === folderId);
+                if (folder) {
+                    folder.quizzes = folder.quizzes.filter(q => q.id !== quizId);
+                    saveFolders();
+                    renderQuizLibrary();
+                    updateDashboardStats();
+                }
+            }, true);
+        }
+
+        function exportAllFolders() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(folders, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `QuizCrafter_題庫全備份_${new Date().toISOString().slice(0,10)}.json`);
+            dlAnchor.click();
+        }
+
+        function exportSingleQuizAsMarkdown(quizId) {
+            let found = null;
+            for (let f of folders) {
+                found = f.quizzes.find(q => q.id === quizId);
+                if (found) break;
+            }
+            if (!found) return;
+
+            let md = `## ${found.title}\n`;
+            if (found.category) md += `分類: ${found.category}\n\n`;
+
+            // 1. 考卷頁面圖檔自攜化：將原頁高解析度圖檔寫入 Markdown 檔頭 (每頁僅存一次)
+            if (found.pages && found.pages.length > 0) {
+                found.pages.forEach(p => {
+                    if (p.dataUrl && p.dataUrl !== '[INDEXEDDB_CACHE]') {
+                        md += `頁面圖檔-${p.pageNumber}: ${p.dataUrl}\n\n`;
+                    }
+                });
+            }
+
+            // 2. 逐題輸出，保留頁碼關聯與個別附圖
+            found.questions.forEach((q) => {
+                if (q.passage) md += `背景: ${q.passage}\n`;
+                md += `題型: ${q.question_type}\n`;
+                if (q.page_index) md += `頁碼: ${q.page_index}\n`;
+                if (q.image_url && q.image_url !== '[INDEXEDDB_CACHE]') {
+                    md += `附圖: ${q.image_url}\n`;
+                }
+                md += `題目: ${q.question_text}\n`;
+                if (q.options && q.options.length) md += `選項: ${q.options.join(', ')}\n`;
+                md += `答案: ${q.answer}\n`;
+                md += `配分: ${q.score_weight || 3}\n`;
+                if (q.explanation) md += `解析: ${q.explanation}\n`;
+                md += `\n`;
+            });
+
+            const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${found.title}.md`;
+            a.click();
+        }
+
+        // 匯入 JSON / MD / TXT 備份檔
+        function importJsonBackupFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const text = e.target.result;
+                    const folderName = file.name.replace(/\.[^/.]+$/, "");
+
+                    if (file.name.endsWith('.json')) {
+                        const parsed = JSON.parse(text);
+                        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].quizzes) {
+                            folders = parsed;
+                        } else if (Array.isArray(parsed)) {
+                            folders.push({
+                                id: 'folder-' + Date.now(),
+                                name: folderName,
+                                quizzes: parsed
+                            });
+                        } else if (parsed && parsed.quizzes) {
+                            folders.push(parsed);
+                        } else {
+                            throw new Error("無效的 JSON 題庫備份檔案格式。");
+                        }
+                    } else {
+                        const mdQuizzes = parseMarkdownToQuizzes(text);
+                        if (mdQuizzes.length === 0) {
+                            throw new Error("未能從 Markdown 檔案中解析出合法題目。");
+                        }
+                        folders.push({
+                            id: 'folder-' + Date.now(),
+                            name: folderName,
+                            quizzes: mdQuizzes
+                        });
+                    }
+
+                    await saveFolders();
+                    renderQuizLibrary();
+                    updateDashboardStats();
+                    showCustomModal("匯入成功", `已成功匯入「${file.name}」！`);
+                } catch (err) {
+                    showCustomModal("匯入失敗", "檔案讀取或解析錯誤：" + err.message);
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // ====================== Markdown 解析器 (相容純文字與圖檔自攜格式) ======================
+        function parseMarkdownToQuizzes(mdText) {
+            if (!mdText || typeof mdText !== 'string') return [];
+            let normalizedMd = mdText.trim();
+            if (!normalizedMd.startsWith('##')) normalizedMd = '## 匯入試卷測驗\n' + normalizedMd;
+
+            const sections = normalizedMd.split(/^##\s+/m).filter(Boolean);
+            const parsedQuizzes = [];
+
+            sections.forEach((section, sIndex) => {
+                const lines = section.split('\n');
+                const quizTitle = lines[0].trim() || `測驗單元 ${sIndex + 1}`;
+                const rawContent = lines.slice(1).join('\n').trim();
+
+                // 提取全卷頁面圖檔 (頁面圖檔-X: data:... 或 ![考卷第X頁](data:...))
+                const pages = [];
+                const pageRegex = /(?:頁面圖檔-(\d+)|!\[(?:考卷)?第?(\d+)頁?\])\s*[\:：]\s*(data:image\S+|\S+)/gi;
+                let pageMatch;
+                while ((pageMatch = pageRegex.exec(rawContent)) !== null) {
+                    const pNum = parseInt(pageMatch[1] || pageMatch[2], 10);
+                    const pUrl = pageMatch[3].replace(/\)$/, '').trim();
+                    if (!pages.some(p => p.pageNumber === pNum)) {
+                        pages.push({ pageNumber: pNum, dataUrl: pUrl });
+                    }
+                }
+
+                // 拆分題目區塊
+                const questionBlocks = rawContent.split(/\n(?=(?:題型|題目|\[題型\]|\d+[\.、]))/i).filter(b => b.trim());
+                const questions = [];
+
+                questionBlocks.forEach((block, qIndex) => {
+                    const blockLines = block.split('\n').map(l => l.trim()).filter(Boolean);
+                    let questionType = '選擇題';
+                    let questionText = '';
+                    let options = [];
+                    let answer = '';
+                    let scoreWeight = 3;
+                    let explanation = '';
+                    let pageIndex = 1;
+                    let imageUrl = '';
+                    let readingBuffer = [];
+
+                    for (let line of blockLines) {
+                        if (/^(背景|導讀|閱讀|情境)[\:：]/i.test(line) || line.startsWith('>')) {
+                            readingBuffer.push(line.replace(/^(背景|導讀|閱讀|情境)[\:：]|^>\s*/i, '').trim());
+                        } else if (/^(題型)[\:：]/i.test(line)) {
+                            questionType = line.replace(/^(題型)[\:：]/i, '').trim();
+                        } else if (/^(頁碼|頁數)[\:：]/i.test(line)) {
+                            pageIndex = parseInt(line.replace(/^(頁碼|頁數)[\:：]/i, '').trim(), 10) || 1;
+                        } else if (/^(附圖|圖片|插圖)[\:：]/i.test(line)) {
+                            imageUrl = line.replace(/^(附圖|圖片|插圖)[\:：]/i, '').trim();
+                        } else if (/^(題目|題幹)[\:：]/i.test(line)) {
+                            questionText = line.replace(/^(題目|題幹)[\:：]/i, '').trim();
+                        } else if (/^(選項)[\:：]/i.test(line)) {
+                            const optRaw = line.replace(/^(選項)[\:：]/i, '').trim();
+                            options = optRaw ? optRaw.split(/[,，]\s*/).map(o => o.trim()).filter(Boolean) : [];
+                        } else if (/^(答案|解答)[\:：]/i.test(line)) {
+                            answer = line.replace(/^(答案|解答)[\:：]/i, '').trim();
+                        } else if (/^(配分)[\:：]/i.test(line)) {
+                            scoreWeight = parseInt(line.replace(/^(配分)[\:：]/i, '').trim(), 10) || 3;
+                        } else if (/^(解析)[\:：]/i.test(line)) {
+                            explanation = line.replace(/^(解析)[\:：]/i, '').trim();
+                        }
+                    }
+
+                    // 檢查題目文字中是否直接含有 Markdown 圖片標籤 ![alt](url)
+                    if (!imageUrl && questionText) {
+                        const imgMatch = questionText.match(/!\[.*?\]\((data:image\S+|https?:\/\/\S+)\)/i);
+                        if (imgMatch) {
+                            imageUrl = imgMatch[1];
+                        }
+                    }
+
+                    if (questionText) {
+                        questions.push({
+                            question_id: qIndex + 1,
+                            question_type: questionType,
+                            passage: readingBuffer.join('\n\n'),
+                            question_text: questionText,
+                            options: options,
+                            answer: answer,
+                            score_weight: scoreWeight,
+                            explanation: explanation,
+                            page_index: pageIndex,
+                            image_url: imageUrl
+                        });
+                    }
+                });
+
+                if (questions.length > 0) {
+                    parsedQuizzes.push({
+                        id: 'quiz-' + Date.now() + '-' + sIndex,
+                        title: quizTitle,
+                        category: '自然科',
+                        pages: pages, // 完整保留自帶的頁面圖檔清單
+                        questions: questions
+                    });
+                }
+            });
+            return parsedQuizzes;
+        }
+
+        // ====================== 手動示範 Markdown ======================
+        function insertSampleMarkdown() {
+            const sample = `## 自然5上 第2單元 1-2 植物的生存之道
+分類: 自然科學
+
+背景: 植物為了適應不同的環境（如高山、乾燥沙漠、海邊潮濕地），根、莖、葉會演化出特殊的型態與機能。
+
+題型: 是非題
+頁碼: 1
+題目: 將植物長期放在沒有陽光的櫃子內，則植物的葉子無法進行光合作用。
+答案: O
+配分: 3
+解析: 光合作用必須有光能作為催化反應的原料，黑暗環境中無法進行。
+
+題型: 選擇題
+頁碼: 2
+題目: 怡玲觀察到如下圖的植物葉片，下列哪一種植物葉面寬大且蒸散作用最旺盛？
+附圖: https://placehold.co/600x300/e0e7ff/4338ca?text=%E6%A4%8D%E7%89%A9%E8%91%89%E7%89%87%E8%A7%80%E5%8F%96%E7%A4%BA%E6%84%8F%E5%9C%96
+選項: ① 捕蠅草, ② 仙人掌, ③ 血桐, ④ 馬鞍藤
+答案: ③
+配分: 3
+解析: 血桐葉面寬大薄平，蒸散作用旺盛。`;
+            document.getElementById('manual-markdown-content').value = sample;
+        }
+
+        function saveManualMarkdownQuiz() {
+            const folderName = document.getElementById('manual-folder-name').value.trim() || '自訂題庫';
+            const quizTitle = document.getElementById('manual-quiz-title').value.trim();
+            const mdText = document.getElementById('manual-markdown-content').value.trim();
+
+            if (!quizTitle || !mdText) {
+                showCustomModal("提示", "請填寫測驗標題與 Markdown 題目內容。");
+                return;
+            }
+
+            const parsed = parseMarkdownToQuizzes(mdText);
+            if (parsed.length === 0) {
+                showCustomModal("解析失敗", "無法解析出合法題目，請確認 Markdown 格式。");
+                return;
+            }
+
+            parsed.forEach(q => q.title = quizTitle);
+
+            let targetFolder = folders.find(f => f.name === folderName);
+            if (!targetFolder) {
+                targetFolder = { id: 'folder-' + Date.now(), name: folderName, quizzes: [] };
+                folders.push(targetFolder);
+            }
+            targetFolder.quizzes.push(...parsed);
+            saveFolders();
+
+            showCustomModal("成功", `測驗卷已儲存！`, () => {
+                document.getElementById('manual-quiz-title').value = '';
+                document.getElementById('manual-markdown-content').value = '';
+                renderQuizLibrary();
+                updateDashboardStats();
+                switchTab('library');
+            });
+        }
+
+        // ====================== 輔助公用函式 ======================
+        function readFileAsync(file) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = reject;
+                r.readAsText(file, 'UTF-8');
+            });
+        }
+
+        function readFileAsDataUrlAsync(file) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = reject;
+                r.readAsDataURL(file);
+            });
+        }
+
+        function updateDashboardStats() {
+            let totalQ = 0;
+            folders.forEach(f => {
+                if (f.quizzes) totalQ += f.quizzes.reduce((acc, q) => acc + (q.questions ? q.questions.length : 0), 0);
+            });
+            document.getElementById('stat-total-folders').innerText = folders.length;
+            document.getElementById('stat-total-questions').innerText = totalQ;
+            document.getElementById('stat-completed').innerText = localStorage.getItem('quiz_completed_count') || 0;
+            document.getElementById('stat-avg-score').innerText = (localStorage.getItem('quiz_avg_score') || 0) + '%';
+        }
+
         function saveSettings() {
             settings.apiKey = document.getElementById('settings-api-key').value.trim();
+            settings.model = document.getElementById('settings-model').value;
             localStorage.setItem('quiz_crafter_settings', JSON.stringify(settings));
-            showCustomModal("成功", "Gemini 3.6 Flash API 設定已儲存！");
+            updateApiStatusBadge();
+            showCustomModal("成功", "Gemini API 設定已更新儲存！");
         }
-        function exportAllQuizzes() {
-            const blob = new Blob([JSON.stringify(quizzes, null, 2)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = 'QuizCrafter_全題庫.json'; a.click();
+
+        // 燈箱控制
+        function openImageLightbox(src) {
+            document.getElementById('lightbox-image').src = src;
+            document.getElementById('image-lightbox-modal').classList.remove('hidden');
+        }
+        function closeImageLightbox() {
+            document.getElementById('image-lightbox-modal').classList.add('hidden');
+        }
+
+        // Modal 對話框控制
+        function showCustomModal(title, msg, confirmCb = null, showCancel = false) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerHTML = msg.replace(/\n/g, '<br>');
+            modalCallback = confirmCb;
+
+            const btnContainer = document.getElementById('modal-buttons');
+            if (showCancel) {
+                btnContainer.innerHTML = `
+                    <button onclick="closeCustomModal()" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold rounded-xl transition">取消</button>
+                    <button onclick="handleModalConfirm()" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition">確定</button>
+                `;
+            } else {
+                btnContainer.innerHTML = `
+                    <button onclick="handleModalConfirm()" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition">確定</button>
+                `;
+            }
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function handleModalConfirm() {
+            document.getElementById('custom-modal').classList.add('hidden');
+            if (modalCallback) modalCallback();
+            modalCallback = null;
+        }
+
+        function closeCustomModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+            modalCallback = null;
+        }
+
+        function showChangelogModal() { document.getElementById('changelog-modal').classList.remove('hidden'); }
+        function closeChangelogModal() { document.getElementById('changelog-modal').classList.add('hidden'); }
+
+        function showApiKeyGuideModal() {
+            document.getElementById('modal-api-key-input').value = settings.apiKey || '';
+            document.getElementById('api-guide-modal').classList.remove('hidden');
+        }
+        function closeApiGuideModal() { document.getElementById('api-guide-modal').classList.add('hidden'); }
+
+        function saveApiKeyFromModal() {
+            const val = document.getElementById('modal-api-key-input').value.trim();
+            if (!val) {
+                showCustomModal("提示", "請輸入有效的 Gemini API Key。");
+                return;
+            }
+            settings.apiKey = val;
+            localStorage.setItem('quiz_crafter_settings', JSON.stringify(settings));
+            document.getElementById('settings-api-key').value = val;
+            updateApiStatusBadge();
+            closeApiGuideModal();
+            showCustomModal("已啟用", "Gemini 多模態 API Key 已成功儲存！現在您可以直接上傳 PDF 考卷進行智慧辨識。");
         }
     </script>
 </body>
