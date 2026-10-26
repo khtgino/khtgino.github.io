@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuizCrafter 專業題庫大師 v3.6.0 (API 自動探測與 MD 資料庫自動排程版)</title>
+    <title>QuizCrafter 專業題庫大師 v3.7.0 (選擇題智慧排版修復與考卷多頁切換版)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -71,7 +71,7 @@
                 </div>
                 <div>
                     <span class="text-xl font-bold bg-gradient-to-r from-brand-600 to-indigo-500 bg-clip-text text-transparent">QuizCrafter</span>
-                    <span class="text-xs font-semibold px-2 py-0.5 ml-2 bg-indigo-50 text-brand-700 rounded-full border border-brand-100 cursor-pointer" onclick="showChangelogModal()" title="點擊檢視更新記錄">v3.6.0 (API 自動探測與 MD 資料庫排程版)</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 ml-2 bg-indigo-50 text-brand-700 rounded-full border border-brand-100 cursor-pointer" onclick="showChangelogModal()" title="點擊檢視更新記錄">v3.7.0 (選擇題智慧排版修復與考卷多頁切換版)</span>
                 </div>
             </div>
 
@@ -447,12 +447,18 @@
             </div>
             <div class="space-y-4 text-xs text-slate-600 leading-relaxed">
                 <div>
-                    <div class="font-bold text-sm text-brand-600">v3.6.0 (API 自動探測與 MD 資料庫自動排程版) - 目前版本</div>
+                    <div class="font-bold text-sm text-brand-600">v3.7.0 (選擇題智慧排版修復與考卷多頁切換版) - 目前版本</div>
                     <ul class="list-disc list-inside mt-1 space-y-1 text-slate-700">
-                        <li><strong>初始 API KEY 自動載入</strong>：首次開啟頁面時自動讀取同路徑下的 <code>api_01.txt</code> 第一行；若無檔案則自動無縫切換至「API設定」頁面引導輸入。</li>
-                        <li><strong>初始預設模型升級</strong>：預設模型更新為最新穩定推理架構 <code>gemini-3.6-flash</code>。</li>
-                        <li><strong>/md_database01/ 自動巡航匯入</strong>：每次開啟或重新整理網頁時，自動偵測並讀取資料夾中尚未匯入過的 MD 檔案建立題庫，重複檔案自動略過。</li>
-                        <li><strong>Session 生命週期金鑰安全隔離</strong>：API Key 記錄於 <code>sessionStorage</code>，重新刷新頁面免重複輸入，分頁或瀏覽器關閉後自動清除不留痕跡。</li>
+                        <li><strong>選擇題選項完整行排版修復</strong>：徹底修復選項內容包含逗點或換行時被分割為多個選項與多餘核選框的問題，單一選項敘述完整集中於同一卡片。</li>
+                        <li><strong>考卷原圖多頁自由切換檢視器</strong>：考卷超過 1 頁時，題目上方提供「上一頁 / 下一頁」與頁碼標籤切換鈕，學生可隨時任意翻閱全卷圖頁對照，且不影響作答進度。</li>
+                    </ul>
+                </div>
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="font-bold text-sm text-slate-700">v3.6.0 (API 自動探測與 MD 資料庫自動排程版)</div>
+                    <ul class="list-disc list-inside mt-1 space-y-1 text-slate-500">
+                        <li>初始 API KEY 自動載入（api_01.txt 讀取）。</li>
+                        <li>初始預設模型升級為 gemini-3.6-flash。</li>
+                        <li>/md_database01/ 自動巡航匯入與 session 隔離。</li>
                     </ul>
                 </div>
                 <div class="pt-2 border-t border-slate-100">
@@ -527,6 +533,60 @@
         let userAnswers = {};
         let uploadedFilesBuffer = [];
         let lastQuizMistakes = [];
+        let playerViewingPageIndex = 1; // 測驗播放器目前對照檢視的考卷頁碼
+
+        // ====================== 選擇題選項智慧正規化與保護演算法 ======================
+        /**
+         * 解決選擇題選項因逗號或換行被錯誤截斷為多個核選框的問題
+         */
+        function normalizeQuestionOptions(options) {
+            if (!options) return [];
+            if (typeof options === 'string') {
+                options = splitOptionsString(options);
+            }
+            if (!Array.isArray(options)) return [];
+
+            const cleanList = options.map(o => (typeof o === 'string' ? o.trim() : '')).filter(Boolean);
+            if (cleanList.length <= 1) return cleanList;
+
+            // 辨識合法選項前綴：①②③④、(1)(2)、1. 2.、A. B.、(A)(B)、甲乙丙丁等
+            const prefixRegex = /^(?:[①②③④⑤⑥⑦⑧⑨⑩\u2460-\u2469]|(?:\([1-9A-Za-z甲乙丙丁]\)|（[1-9A-Za-z甲乙丙丁]）|[1-9A-Za-z甲乙丙丁][\.\、\s\)\）]))/;
+
+            const hasAnyPrefix = cleanList.some(opt => prefixRegex.test(opt));
+            if (!hasAnyPrefix) {
+                return cleanList;
+            }
+
+            const merged = [];
+            for (let opt of cleanList) {
+                if (merged.length === 0) {
+                    merged.push(opt);
+                } else if (prefixRegex.test(opt)) {
+                    // 具備新選項開頭代號，獨立為新選項
+                    merged.push(opt);
+                } else {
+                    // 不具備選項代號：此為被原卷標點符號或排版截斷的子句，智慧合併回上一選項中
+                    const lastIdx = merged.length - 1;
+                    const prev = merged[lastIdx];
+                    if (/[，,、；;]$/.test(prev)) {
+                        merged[lastIdx] = prev + ' ' + opt;
+                    } else {
+                        merged[lastIdx] = prev + '，' + opt;
+                    }
+                }
+            }
+            return merged;
+        }
+
+        function splitOptionsString(optRaw) {
+            if (!optRaw || typeof optRaw !== 'string') return [];
+            // 僅在逗點或換行後方「緊接著選項代號」時才進行切分，防止選項內部敘述的逗號遭到誤切
+            const splitRegex = /(?:[,，;；\|\n\r]+|\s{2,})(?=(?:[①②③④⑤⑥⑦⑧⑨⑩\u2460-\u2469]|(?:\([1-9A-Za-z甲乙丙丁]\)|（[1-9A-Za-z甲乙丙丁]）|[1-9A-Za-z甲乙丙丁][\.\、\s\)\）])))/g;
+            if (splitRegex.test(optRaw)) {
+                return optRaw.split(splitRegex).map(s => s.trim()).filter(Boolean);
+            }
+            return optRaw.split(/[,，;；\|\n\r]+/).map(s => s.trim()).filter(Boolean);
+        }
 
         // ====================== IndexedDB 本地海量資料庫 (解決 LocalStorage 5MB QuotaExceededError) ======================
         const IDB_NAME = 'QuizCrafterDB';
@@ -928,7 +988,11 @@
    - 是非題答案必須為 "O" 或 "X"。
    - 選擇題答案必須為選項代號（例如 "①"、"②"、"③" 或 "④"）。
    - 活用題若為選擇或填空，請將其拆解為子題，並給予精準答案。
-5. 嚴格輸出為合法 JSON 格式，不要加任何額外的問候語或 Markdown 標籤外的雜訊，格式定義如下：
+5. 選擇題的 options 陣列必須嚴格遵守：
+   - 每道選擇題必須恰好輸出標準選項清單（通常為4個：①、②、③、④ 或 (A)、(B)、(C)、(D)）。
+   - 每個選項字串必須完整包含代號與全部文字敘述（例如 "② 從夏至到冬至，太陽高度角逐漸變小，而影子逐漸變短"）。
+   - 即使試卷上該選項跨行換行、排版在兩行以上或包含逗點，也【絕對不可】將同一個選項截斷或拆成多個獨立字串！
+6. 嚴格輸出為合法 JSON 格式，不要加任何額外的問候語或 Markdown 標籤外的雜訊，格式定義如下：
 {
   "title": "考卷標題 (例如：適翰版 自然5上 第2單元 1-2 植物的生存之道)",
   "category": "學科領域 (例如：自然科)",
@@ -938,7 +1002,7 @@
       "question_type": "是非題 或 選擇題 或 活用題",
       "passage": "素養閱讀文章、實驗情境或背景引言（無則留空字串）",
       "question_text": "題目題幹完整文字",
-      "options": ["① 選項1", "② 選項2", "③ 選項3", "④ 選項4"],
+      "options": ["① 選項1完整內容", "② 選項2完整內容", "③ 選項3完整內容", "④ 選項4完整內容"],
       "answer": "O",
       "score_weight": 3,
       "explanation": "詳細題目解說與課本觀念說明",
@@ -1167,7 +1231,7 @@
                             question_type: qType,
                             passage: q.passage || '',
                             question_text: q.question_text || '',
-                            options: q.options || [],
+                            options: normalizeQuestionOptions(q.options || []),
                             answer: q.answer || '',
                             score_weight: q.score_weight || 3,
                             explanation: q.explanation || '',
@@ -1233,6 +1297,7 @@
 
             currentQuestionIndex = 0;
             userAnswers = {};
+            playerViewingPageIndex = activeQuiz.questions[0]?.page_index || 1;
             document.getElementById('player-quiz-title').innerText = activeQuiz.title;
             document.getElementById('player-quiz-category').innerText = activeQuiz.category || '測驗單元';
 
@@ -1244,6 +1309,13 @@
             const q = activeQuiz.questions[currentQuestionIndex];
             const container = document.getElementById('player-question-card');
             
+            // 同步考卷檢視頁碼
+            if (q.page_index && activeQuiz.pages && activeQuiz.pages.some(p => p.pageNumber === q.page_index)) {
+                playerViewingPageIndex = q.page_index;
+            } else if (!playerViewingPageIndex) {
+                playerViewingPageIndex = 1;
+            }
+
             // 更新進度條
             const percent = Math.round(((currentQuestionIndex + 1) / activeQuiz.questions.length) * 100);
             document.getElementById('player-progress-bar').style.width = percent + '%';
@@ -1276,24 +1348,52 @@
                 `;
             }
 
-            // 2. 考卷當頁原圖對照（由 quiz.pages 集中取得，點擊可燈箱放大）
-            let displayImg = q.image_url;
-            if ((!displayImg || displayImg === '[INDEXEDDB_CACHE]') && activeQuiz.pages && activeQuiz.pages.length > 0) {
-                const matched = activeQuiz.pages.find(p => p.pageNumber === q.page_index) || activeQuiz.pages[0];
-                if (matched && matched.dataUrl && matched.dataUrl !== '[INDEXEDDB_CACHE]') {
-                    displayImg = matched.dataUrl;
-                }
+            // 2. 考卷原圖對照 (支援多頁任意切換翻閱)
+            const pagesList = activeQuiz.pages || [];
+            let displayImg = '';
+            const matchedPage = pagesList.find(p => p.pageNumber === playerViewingPageIndex) || pagesList[0];
+            if (matchedPage && matchedPage.dataUrl && matchedPage.dataUrl !== '[INDEXEDDB_CACHE]') {
+                displayImg = matchedPage.dataUrl;
+            } else if (q.image_url && q.image_url !== '[INDEXEDDB_CACHE]') {
+                displayImg = q.image_url;
             }
 
-            if (displayImg && displayImg.trim() !== '' && displayImg !== '[INDEXEDDB_CACHE]') {
+            if (displayImg && displayImg.trim() !== '') {
+                const totalPages = pagesList.length;
                 html += `
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                        <div class="text-xs text-slate-500 mb-1 flex items-center justify-center font-medium">
-                            <i class="fa-solid fa-image mr-1.5 text-brand-500"></i>考卷原頁附圖 (第 ${q.page_index || 1} 頁，點擊可放大檢視植物葉片與插圖)
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 sm:p-4 text-center space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/70 pb-2.5">
+                            <div class="text-xs font-bold text-slate-800 flex items-center">
+                                <i class="fa-solid fa-file-lines text-brand-600 mr-2 text-sm"></i>
+                                <span>考卷原圖對照</span>
+                                <span id="player-page-badge-text" class="ml-2 font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-2.5 py-0.5 rounded-full text-[11px]">
+                                    第 ${playerViewingPageIndex} 頁 ${totalPages > 1 ? `/ 共 ${totalPages} 頁` : ''}
+                                </span>
+                            </div>
+                            ${totalPages > 1 ? `
+                                <div class="flex items-center space-x-1.5">
+                                    <button type="button" id="btn-exam-page-prev" onclick="switchPlayerExamPage(${playerViewingPageIndex - 1})" ${playerViewingPageIndex <= 1 ? 'disabled' : ''} class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center shadow-2xs">
+                                        <i class="fa-solid fa-chevron-left mr-1 text-[10px]"></i>上一頁
+                                    </button>
+                                    <div class="flex items-center space-x-1">
+                                        ${pagesList.map((p, pIdx) => {
+                                            const pNum = p.pageNumber || (pIdx + 1);
+                                            const isCur = pNum === playerViewingPageIndex;
+                                            return `<button type="button" data-page="${pNum}" onclick="switchPlayerExamPage(${pNum})" class="exam-page-tab-btn px-2.5 py-1 text-xs rounded-lg transition ${isCur ? 'font-bold bg-brand-600 text-white shadow-2xs' : 'font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}">P.${pNum}</button>`;
+                                        }).join('')}
+                                    </div>
+                                    <button type="button" id="btn-exam-page-next" onclick="switchPlayerExamPage(${playerViewingPageIndex + 1})" ${playerViewingPageIndex >= totalPages ? 'disabled' : ''} class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center shadow-2xs">
+                                        下一頁<i class="fa-solid fa-chevron-right ml-1 text-[10px]"></i>
+                                    </button>
+                                </div>
+                            ` : `
+                                <span class="text-[11px] text-slate-400">點擊圖片可放大檢視</span>
+                            `}
                         </div>
                         <div class="quiz-img-container">
-                            <img src="${displayImg}" alt="考卷原圖對照" onclick="openImageLightbox(this.src)" title="點擊放大檢視原圖">
+                            <img id="player-exam-img" src="${displayImg}" alt="考卷第 ${playerViewingPageIndex} 頁" onclick="openImageLightbox(this.src)" title="點擊放大檢視考卷原圖">
                         </div>
+                        ${totalPages > 1 ? `<div class="text-[11px] text-slate-400 flex items-center justify-center"><i class="fa-solid fa-circle-info mr-1 text-slate-400"></i>本試卷共 ${totalPages} 頁，可點選上方按鈕隨時切換頁次對照插圖與題組。點擊圖片可全螢幕放大。</div>` : ''}
                     </div>
                 `;
             }
@@ -1331,15 +1431,21 @@
                     </div>
                 `;
             } else if (q.options && q.options.length > 0) {
-                // 選擇題
+                // 選擇題：經過智慧正規化，確保完整敘述在同一個選項卡片內呈現
+                const normalizedOptions = normalizeQuestionOptions(q.options);
                 html += `<div class="space-y-3 pt-2">`;
-                q.options.forEach((opt) => {
-                    const optKey = opt.charAt(0);
-                    const isChecked = userAnswers[currentQuestionIndex] === optKey || userAnswers[currentQuestionIndex] === opt;
+                normalizedOptions.forEach((opt) => {
+                    const optMatch = opt.match(/^(?:[①②③④⑤⑥⑦⑧⑨⑩\u2460-\u2469]|(?:\([1-9A-Za-z甲乙丙丁]\)|（[1-9A-Za-z甲乙丙丁]）|[1-9A-Za-z甲乙丙丁][\.\、\s\)\）]))/);
+                    const optKey = optMatch ? optMatch[0].replace(/[\(\)（）\.\、\s]/g, '') : opt.charAt(0);
+                    
+                    const curAns = (userAnswers[currentQuestionIndex] || '').toString().trim();
+                    const isChecked = curAns === optKey || curAns === opt || (curAns.length > 0 && opt.startsWith(curAns));
+                    const safeKey = optKey.replace(/'/g, "\\'");
+
                     html += `
-                        <label class="flex items-center space-x-3.5 p-4 rounded-xl border ${isChecked ? 'border-brand-600 bg-brand-50/70 shadow-xs' : 'border-slate-200 bg-white hover:bg-slate-50'} cursor-pointer transition">
-                            <input type="radio" name="quiz_opt" value="${optKey}" ${isChecked ? 'checked' : ''} onchange="selectAnswer('${optKey}')" class="text-brand-600 focus:ring-brand-500 w-4 h-4">
-                            <span class="text-sm font-medium text-slate-800 quiz-img-container">${marked.parseInline(opt)}</span>
+                        <label class="flex items-center space-x-3.5 p-4 rounded-xl border ${isChecked ? 'border-brand-600 bg-brand-50/70 shadow-xs ring-1 ring-brand-500/30' : 'border-slate-200 bg-white hover:bg-slate-50'} cursor-pointer transition">
+                            <input type="radio" name="quiz_opt" value="${safeKey}" ${isChecked ? 'checked' : ''} onchange="selectAnswer('${safeKey}')" class="text-brand-600 focus:ring-brand-500 w-4 h-4 flex-shrink-0">
+                            <span class="text-sm font-medium text-slate-800 quiz-img-container leading-relaxed flex-1">${marked.parseInline(opt)}</span>
                         </label>
                     `;
                 });
@@ -1361,6 +1467,47 @@
             document.getElementById('btn-next').innerHTML = currentQuestionIndex === activeQuiz.questions.length - 1
                 ? '<span>完成並結算測驗</span><i class="fa-solid fa-flag-checkered ml-1.5"></i>'
                 : '<span>下一題</span><i class="fa-solid fa-chevron-right ml-1"></i>';
+        }
+
+        /**
+         * 測驗考卷原頁切換
+         */
+        function switchPlayerExamPage(targetPageNumber) {
+            if (!activeQuiz || !activeQuiz.pages || activeQuiz.pages.length === 0) return;
+            const pagesList = activeQuiz.pages;
+            const totalPages = pagesList.length;
+
+            if (targetPageNumber < 1) targetPageNumber = 1;
+            if (targetPageNumber > totalPages) targetPageNumber = totalPages;
+
+            playerViewingPageIndex = targetPageNumber;
+
+            const matched = pagesList.find(p => p.pageNumber === playerViewingPageIndex) || pagesList[playerViewingPageIndex - 1] || pagesList[0];
+            const imgEl = document.getElementById('player-exam-img');
+            const badgeEl = document.getElementById('player-page-badge-text');
+            const btnPrev = document.getElementById('btn-exam-page-prev');
+            const btnNext = document.getElementById('btn-exam-page-next');
+
+            if (imgEl && matched && matched.dataUrl && matched.dataUrl !== '[INDEXEDDB_CACHE]') {
+                imgEl.src = matched.dataUrl;
+                imgEl.alt = `考卷第 ${playerViewingPageIndex} 頁`;
+            }
+
+            if (badgeEl) {
+                badgeEl.innerText = `第 ${playerViewingPageIndex} 頁 / 共 ${totalPages} 頁`;
+            }
+
+            document.querySelectorAll('.exam-page-tab-btn').forEach(btn => {
+                const pNum = parseInt(btn.getAttribute('data-page'), 10);
+                if (pNum === playerViewingPageIndex) {
+                    btn.className = 'exam-page-tab-btn px-2.5 py-1 text-xs font-bold rounded-lg bg-brand-600 text-white shadow-2xs';
+                } else {
+                    btn.className = 'exam-page-tab-btn px-2.5 py-1 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100';
+                }
+            });
+
+            if (btnPrev) btnPrev.disabled = playerViewingPageIndex <= 1;
+            if (btnNext) btnNext.disabled = playerViewingPageIndex >= totalPages;
         }
 
         function selectAnswer(ans) {
@@ -1417,7 +1564,18 @@
                 if (cAns === '○' || cAns === '對') cAns = 'O';
                 if (cAns === '✕' || cAns === '錯') cAns = 'X';
 
-                const isCorrect = uAns && cAns && (uAns === cAns || cAns.includes(uAns));
+                // 選項符號歸一化 (① -> 1, ② -> 2)
+                const numMap = { '①': '1', '②': '2', '③': '3', '④': '4', '⑤': '5', '⑥': '6', '⑦': '7', '⑧': '8', '⑨': '9', '⑩': '10' };
+                const uNorm = numMap[uAns] || uAns;
+                const cNorm = numMap[cAns] || cAns;
+
+                const isCorrect = uAns && cAns && (
+                    uAns === cAns || 
+                    uNorm === cNorm || 
+                    cAns.includes(uAns) || 
+                    uAns.includes(cAns) ||
+                    cNorm.includes(uNorm)
+                );
 
                 if (isCorrect) {
                     correct++;
@@ -1783,7 +1941,7 @@
                             questionText = line.replace(/^(題目|題幹)[\:：]/i, '').trim();
                         } else if (/^(選項)[\:：]/i.test(line)) {
                             const optRaw = line.replace(/^(選項)[\:：]/i, '').trim();
-                            options = optRaw ? optRaw.split(/[,，]\s*/).map(o => o.trim()).filter(Boolean) : [];
+                            options = normalizeQuestionOptions(splitOptionsString(optRaw));
                         } else if (/^(答案|解答)[\:：]/i.test(line)) {
                             answer = line.replace(/^(答案|解答)[\:：]/i, '').trim();
                         } else if (/^(配分)[\:：]/i.test(line)) {
