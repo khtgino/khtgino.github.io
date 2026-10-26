@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuizCrafter 專業題庫大師 v3.7.0 (選擇題智慧排版修復與考卷多頁切換版)</title>
+    <title>QuizCrafter 專業題庫大師 v3.8.0 (考卷多頁檢視記憶鎖定與智慧頁碼切換版)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -71,7 +71,7 @@
                 </div>
                 <div>
                     <span class="text-xl font-bold bg-gradient-to-r from-brand-600 to-indigo-500 bg-clip-text text-transparent">QuizCrafter</span>
-                    <span class="text-xs font-semibold px-2 py-0.5 ml-2 bg-indigo-50 text-brand-700 rounded-full border border-brand-100 cursor-pointer" onclick="showChangelogModal()" title="點擊檢視更新記錄">v3.7.0 (選擇題智慧排版修復與考卷多頁切換版)</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 ml-2 bg-indigo-50 text-brand-700 rounded-full border border-brand-100 cursor-pointer" onclick="showChangelogModal()" title="點擊檢視更新記錄">v3.8.0 (考卷多頁檢視記憶鎖定版)</span>
                 </div>
             </div>
 
@@ -447,8 +447,15 @@
             </div>
             <div class="space-y-4 text-xs text-slate-600 leading-relaxed">
                 <div>
-                    <div class="font-bold text-sm text-brand-600">v3.7.0 (選擇題智慧排版修復與考卷多頁切換版) - 目前版本</div>
+                    <div class="font-bold text-sm text-brand-600">v3.8.0 (考卷多頁檢視記憶鎖定與智慧頁碼切換版) - 目前版本</div>
                     <ul class="list-disc list-inside mt-1 space-y-1 text-slate-700">
+                        <li><strong>考卷多頁檢視記憶鎖定 (Sticky Page View)</strong>：徹底修復學生手動翻閱至考卷第 2 頁或任一頁次後，點選「下一題」、「上一題」或作答選項時，畫面會被強制跳回第 1 頁的不良體驗。系統會鎖定並持續保留使用者所選取的檢視頁碼。</li>
+                        <li><strong>本題所屬頁次快速對齊捷徑</strong>：若當前翻閱頁碼與該題目原始所屬頁次不同時，工具列會即時提供「對齊本題 (P.X)」按鈕，方便學生一鍵迅速切回題目所屬原頁。</li>
+                    </ul>
+                </div>
+                <div class="pt-2 border-t border-slate-100">
+                    <div class="font-bold text-sm text-slate-700">v3.7.0 (選擇題智慧排版修復與考卷多頁切換版)</div>
+                    <ul class="list-disc list-inside mt-1 space-y-1 text-slate-500">
                         <li><strong>選擇題選項完整行排版修復</strong>：徹底修復選項內容包含逗點或換行時被分割為多個選項與多餘核選框的問題，單一選項敘述完整集中於同一卡片。</li>
                         <li><strong>考卷原圖多頁自由切換檢視器</strong>：考卷超過 1 頁時，題目上方提供「上一頁 / 下一頁」與頁碼標籤切換鈕，學生可隨時任意翻閱全卷圖頁對照，且不影響作答進度。</li>
                     </ul>
@@ -534,6 +541,7 @@
         let uploadedFilesBuffer = [];
         let lastQuizMistakes = [];
         let playerViewingPageIndex = 1; // 測驗播放器目前對照檢視的考卷頁碼
+        let userManualSelectedPage = false; // 記錄使用者是否已手動指定頁面（鎖定檢視頁次，跳題時不再強制重設）
 
         // ====================== 選擇題選項智慧正規化與保護演算法 ======================
         /**
@@ -1297,6 +1305,7 @@
 
             currentQuestionIndex = 0;
             userAnswers = {};
+            userManualSelectedPage = false;
             playerViewingPageIndex = activeQuiz.questions[0]?.page_index || 1;
             document.getElementById('player-quiz-title').innerText = activeQuiz.title;
             document.getElementById('player-quiz-category').innerText = activeQuiz.category || '測驗單元';
@@ -1309,11 +1318,13 @@
             const q = activeQuiz.questions[currentQuestionIndex];
             const container = document.getElementById('player-question-card');
             
-            // 同步考卷檢視頁碼
-            if (q.page_index && activeQuiz.pages && activeQuiz.pages.some(p => p.pageNumber === q.page_index)) {
-                playerViewingPageIndex = q.page_index;
-            } else if (!playerViewingPageIndex) {
-                playerViewingPageIndex = 1;
+            // 考卷檢視頁碼智慧記憶：若使用者已手動選定頁碼（如翻至第2頁），換題或作答時一律保留選定頁次，絕不跳回第1頁
+            if (!userManualSelectedPage) {
+                if (q.page_index && activeQuiz.pages && activeQuiz.pages.some(p => p.pageNumber === q.page_index)) {
+                    playerViewingPageIndex = q.page_index;
+                } else if (!playerViewingPageIndex) {
+                    playerViewingPageIndex = 1;
+                }
             }
 
             // 更新進度條
@@ -1371,7 +1382,12 @@
                                 </span>
                             </div>
                             ${totalPages > 1 ? `
-                                <div class="flex items-center space-x-1.5">
+                                <div class="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                                    ${q.page_index && q.page_index !== playerViewingPageIndex ? `
+                                        <button type="button" onclick="alignExamPageToQuestion(${q.page_index})" class="px-2 py-1 text-xs font-semibold rounded-lg bg-indigo-50 border border-brand-200 text-brand-700 hover:bg-brand-100 transition flex items-center shadow-2xs mr-1" title="點擊跳至本題原屬頁面">
+                                            <i class="fa-solid fa-crosshairs mr-1 text-[10px]"></i>對齊本題(P.${q.page_index})
+                                        </button>
+                                    ` : ''}
                                     <button type="button" id="btn-exam-page-prev" onclick="switchPlayerExamPage(${playerViewingPageIndex - 1})" ${playerViewingPageIndex <= 1 ? 'disabled' : ''} class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center shadow-2xs">
                                         <i class="fa-solid fa-chevron-left mr-1 text-[10px]"></i>上一頁
                                     </button>
@@ -1481,6 +1497,7 @@
             if (targetPageNumber > totalPages) targetPageNumber = totalPages;
 
             playerViewingPageIndex = targetPageNumber;
+            userManualSelectedPage = true; // 關鍵修正：標記使用者已手動指定頁面，跳題或作答時不再重設
 
             const matched = pagesList.find(p => p.pageNumber === playerViewingPageIndex) || pagesList[playerViewingPageIndex - 1] || pagesList[0];
             const imgEl = document.getElementById('player-exam-img');
@@ -1508,6 +1525,14 @@
 
             if (btnPrev) btnPrev.disabled = playerViewingPageIndex <= 1;
             if (btnNext) btnNext.disabled = playerViewingPageIndex >= totalPages;
+        }
+
+        /**
+         * 對齊目前題目原始所屬頁面
+         */
+        function alignExamPageToQuestion(targetPage) {
+            userManualSelectedPage = false;
+            switchPlayerExamPage(targetPage);
         }
 
         function selectAnswer(ans) {
@@ -1641,6 +1666,8 @@
             };
             currentQuestionIndex = 0;
             userAnswers = {};
+            userManualSelectedPage = false;
+            playerViewingPageIndex = activeQuiz.questions[0]?.page_index || 1;
             switchTab('player');
             renderPlayerQuestion();
         }
