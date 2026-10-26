@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuizCrafter 專業題庫大師 v3.3.0 (IndexedDB 海量圖檔防爆版)</title>
+    <title>QuizCrafter 專業題庫大師 v3.6.0 (API 自動探測與 MD 資料庫自動排程版)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -71,7 +71,7 @@
                 </div>
                 <div>
                     <span class="text-xl font-bold bg-gradient-to-r from-brand-600 to-indigo-500 bg-clip-text text-transparent">QuizCrafter</span>
-                    <span class="text-xs font-semibold px-2 py-0.5 ml-2 bg-indigo-50 text-brand-700 rounded-full border border-brand-100 cursor-pointer" onclick="showChangelogModal()" title="點擊檢視更新記錄">v3.5.0 (503 避峰與高抗壓模型版)</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 ml-2 bg-indigo-50 text-brand-700 rounded-full border border-brand-100 cursor-pointer" onclick="showChangelogModal()" title="點擊檢視更新記錄">v3.6.0 (API 自動探測與 MD 資料庫排程版)</span>
                 </div>
             </div>
 
@@ -294,6 +294,7 @@
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-1.5">多模態模型選擇</label>
                     <select id="settings-model" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-500">
+                        <option value="gemini-3.6-flash">Gemini 3.6 Flash (全新初始預設：高效多模態推理與學科解析)</option>
                         <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (高抗壓首選：超大容量、極少 503 壅塞)</option>
                         <option value="gemini-2.5-flash">Gemini 2.5 Flash (平衡旗艦：學科解題精準且穩定)</option>
                         <option value="gemini-3.8-flash">Gemini 3.8 Flash (最新高智能：遇尖峰時段自動觸發避峰)</option>
@@ -446,16 +447,16 @@
             </div>
             <div class="space-y-4 text-xs text-slate-600 leading-relaxed">
                 <div>
-                    <div class="font-bold text-sm text-brand-600">v3.5.0 (503 高負載極速避峰與雙重備援引擎版) - 目前版本</div>
+                    <div class="font-bold text-sm text-brand-600">v3.6.0 (API 自動探測與 MD 資料庫自動排程版) - 目前版本</div>
                     <ul class="list-disc list-inside mt-1 space-y-1 text-slate-700">
-                        <li><strong>徹底克服 503 High Demand</strong>：新增 <code>gemini-2.5-flash-lite</code> 與 <code>gemini-3.5-flash-lite</code> 等高可用容量池，避開尖峰時段特定模型運算瓶頸。</li>
-                        <li><strong>快攻式降級排程 (Fast-Failover Cascade)</strong>：遇 503 錯誤時迅速平滑切換至可用模型，不再於壅塞節點反覆無效等待。</li>
-                        <li><strong>視覺 Payload 瘦身 50%</strong>：最佳化 PDF Canvas 渲染與壓縮率，大幅降低視覺 Token 消耗，避免觸發 Google 伺服器動態過載丟包。</li>
-                        <li><strong>修復設定鎖定問題</strong>：解除誤將 <code>gemini-2.5</code> 視為停用模型的強制改寫邏輯，設定自由保留。</li>
+                        <li><strong>初始 API KEY 自動載入</strong>：首次開啟頁面時自動讀取同路徑下的 <code>api_01.txt</code> 第一行；若無檔案則自動無縫切換至「API設定」頁面引導輸入。</li>
+                        <li><strong>初始預設模型升級</strong>：預設模型更新為最新穩定推理架構 <code>gemini-3.6-flash</code>。</li>
+                        <li><strong>/md_database01/ 自動巡航匯入</strong>：每次開啟或重新整理網頁時，自動偵測並讀取資料夾中尚未匯入過的 MD 檔案建立題庫，重複檔案自動略過。</li>
+                        <li><strong>Session 生命週期金鑰安全隔離</strong>：API Key 記錄於 <code>sessionStorage</code>，重新刷新頁面免重複輸入，分頁或瀏覽器關閉後自動清除不留痕跡。</li>
                     </ul>
                 </div>
                 <div class="pt-2 border-t border-slate-100">
-                    <div class="font-bold text-sm text-slate-700">v3.4.0 (Markdown 圖檔自攜與雙向無失真還原版)</div>
+                    <div class="font-bold text-sm text-slate-700">v3.5.0 (503 高負載極速避峰與雙重備援引擎版)</div>
                     <ul class="list-disc list-inside mt-1 space-y-1 text-slate-500">
                         <li>MD 考卷圖檔自攜技術與雙向還原。</li>
                     </ul>
@@ -498,15 +499,27 @@
         // ====================== 全域狀態與初始化 ======================
         let modalCallback = null;
         let folders = []; // 由 initStorage 從 IndexedDB 或 LocalStorage 異步載入
-        let settings = JSON.parse(localStorage.getItem('quiz_crafter_settings')) || {
-            apiKey: '',
-            model: 'gemini-2.5-flash-lite'
+        
+        // 讀取設定：模型預設採用 gemini-3.6-flash，API Key 遵循 sessionStorage 規範（重整保留，關閉清空）
+        let storedSettings = JSON.parse(localStorage.getItem('quiz_crafter_settings')) || {};
+        let sessionApiKey = sessionStorage.getItem('quiz_crafter_session_api_key') || '';
+        
+        // 清理舊版留在 localStorage 中的 API Key 確保關閉瀏覽器後確實清除
+        if (storedSettings.apiKey) {
+            if (!sessionApiKey) sessionApiKey = storedSettings.apiKey;
+            delete storedSettings.apiKey;
+            localStorage.setItem('quiz_crafter_settings', JSON.stringify(storedSettings));
+        }
+
+        let settings = {
+            apiKey: sessionApiKey,
+            model: storedSettings.model || 'gemini-3.6-flash'
         };
 
-        // 自動遷移舊版已停用的模型設定 (僅針對真正停用的 2.0 / 1.5 舊版)
+        // 自動遷移舊版設定，預設指定為 gemini-3.6-flash
         if (!settings.model || settings.model.includes('2.0') || settings.model.includes('1.5')) {
-            settings.model = 'gemini-2.5-flash-lite';
-            localStorage.setItem('quiz_crafter_settings', JSON.stringify(settings));
+            settings.model = 'gemini-3.6-flash';
+            localStorage.setItem('quiz_crafter_settings', JSON.stringify({ model: settings.model }));
         }
 
         let activeQuiz = null;
@@ -655,12 +668,148 @@
             await initStorage();
             updateDashboardStats();
             renderQuizLibrary();
+            
+            // 執行條件 1 與 4：自動讀取 api_01.txt 與 API Key 生命週期管理
+            await initApiKey();
+
+            // 執行條件 3：自動巡檢並匯入 /md_database01/ 中的 MD 檔案
+            await checkAndAutoImportMdDatabase();
+
             document.getElementById('settings-api-key').value = settings.apiKey || '';
-            document.getElementById('settings-model').value = settings.model || 'gemini-2.5-flash-lite';
+            document.getElementById('settings-model').value = settings.model || 'gemini-3.6-flash';
             updateApiStatusBadge();
 
             window.addEventListener('keydown', handleGlobalKeydown);
         });
+
+        /**
+         * 條件 1 & 4 核心實作：
+         * 1. 檢查 sessionStorage 是否已存有金鑰（刷新保留）。
+         * 2. 若無，則嘗試 fetch('./api_01.txt')，取第一行為預設金鑰。
+         * 3. 若找不到 api_01.txt 或內容為空，自動跳轉至「API設定」頁面。
+         */
+        async function initApiKey() {
+            // 如果 sessionStorage 已經有 API Key，直接使用
+            if (settings.apiKey && settings.apiKey.trim().length > 0) {
+                return;
+            }
+
+            let loadedFromTxt = false;
+            try {
+                const response = await fetch('./api_01.txt', { cache: 'no-cache' });
+                if (response.ok) {
+                    const text = await response.text();
+                    const firstLine = text.split(/\r?\n/)[0].trim();
+                    if (firstLine.length > 0) {
+                        settings.apiKey = firstLine;
+                        sessionStorage.setItem('quiz_crafter_session_api_key', firstLine);
+                        loadedFromTxt = true;
+                    }
+                }
+            } catch (err) {
+                console.info("未檢測到同目錄下的 api_01.txt 檔案，將轉由使用者手動設定。");
+            }
+
+            if (!loadedFromTxt && (!settings.apiKey || settings.apiKey.trim().length === 0)) {
+                // 找不到檔案且尚未配置 API Key，自動切換至 API 設定頁面
+                setTimeout(() => {
+                    switchTab('settings');
+                    const keyInput = document.getElementById('settings-api-key');
+                    if (keyInput) keyInput.focus();
+                    showCustomModal(
+                        "請輸入 Gemini API Key",
+                        "系統未在同路徑下偵測到「api_01.txt」預設金鑰檔案。<br>已自動為您切換至設定頁面，請貼上您的 Google Gemini API Key 以啟用題庫多模態解析功能。"
+                    );
+                }, 300);
+            }
+        }
+
+        /**
+         * 條件 3 核心實作：
+         * 當網頁開啟或刷新時，自動檢查相同路徑下 /md_database01/ 資料夾裡面的每一個 MD 檔案。
+         * 已經匯入過則忽略，未匯入過則自動轉化為題庫資料夾並寫入儲存。
+         */
+        async function checkAndAutoImportMdDatabase() {
+            // 已匯入過的 MD 檔案登記冊 (以檔名為鍵)
+            let importedRegistry = JSON.parse(localStorage.getItem('quiz_crafter_imported_md_registry')) || [];
+            
+            // 候選檔案清單收集（支援 manifest.json、目錄索引掃描與標準常見試卷檔案）
+            let candidateFiles = [];
+
+            // 1. 嘗試讀取 manifest.json (若專案有建立檔案清單)
+            try {
+                const manifestRes = await fetch('./md_database01/manifest.json', { cache: 'no-cache' });
+                if (manifestRes.ok) {
+                    const manifestData = await manifestRes.json();
+                    if (Array.isArray(manifestData)) {
+                        candidateFiles.push(...manifestData);
+                    }
+                }
+            } catch (_) {}
+
+            // 2. 嘗試探測常見及已知 MD 命名
+            const defaultCandidateNames = [
+                'nature_exam_database.md',
+                'nature_exam_all_20_papers.md',
+                'nature_exam_01.md',
+                'nature_exam_02.md',
+                'quiz.md',
+                'exam.md',
+                'database.md'
+            ];
+            candidateFiles.push(...defaultCandidateNames);
+
+            // 3. 去重
+            candidateFiles = Array.from(new Set(candidateFiles));
+
+            let importedNewCount = 0;
+
+            for (const fileName of candidateFiles) {
+                if (!fileName.endsWith('.md')) continue;
+                
+                // 如果已經匯入過，直接忽略
+                if (importedRegistry.includes(fileName)) {
+                    continue;
+                }
+
+                try {
+                    const res = await fetch(`./md_database01/${fileName}`, { cache: 'no-cache' });
+                    if (!res.ok) continue;
+
+                    const mdContent = await res.text();
+                    if (!mdContent || mdContent.trim().length === 0) continue;
+
+                    const parsedQuizzes = parseMarkdownToQuizzes(mdContent);
+                    if (parsedQuizzes && parsedQuizzes.length > 0) {
+                        const folderTitle = fileName.replace(/\.[^/.]+$/, "");
+                        
+                        // 檢查是否題庫中已經有相同名稱且題目數相符的資料夾（避免重複建置）
+                        const alreadyExists = folders.some(f => f.name === folderTitle || f.name.includes(folderTitle));
+                        if (!alreadyExists) {
+                            folders.push({
+                                id: 'folder-auto-md-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+                                name: folderTitle,
+                                quizzes: parsedQuizzes
+                            });
+                            importedNewCount++;
+                        }
+
+                        // 標記為已匯入
+                        importedRegistry.push(fileName);
+                    }
+                } catch (e) {
+                    // 若該檔案不存在於伺服器則略過
+                }
+            }
+
+            if (importedNewCount > 0) {
+                localStorage.setItem('quiz_crafter_imported_md_registry', JSON.stringify(importedRegistry));
+                await saveFolders();
+                renderQuizLibrary();
+                updateDashboardStats();
+                console.log(`[QuizCrafter] 已自動從 /md_database01/ 匯入 ${importedNewCount} 份全新 MD 考卷！`);
+            }
+        }
 
         function updateApiStatusBadge() {
             const badge = document.getElementById('api-status-badge');
@@ -752,17 +901,18 @@
         async function parseExamImagesWithGemini(pageImages, examTitleHint, onStatusUpdate) {
             const apiKey = settings.apiKey ? settings.apiKey.trim() : '';
             if (!apiKey) {
-                throw new Error("尚未設定 Gemini API Key！請先點擊上方「設定 API Key」輸入金鑰，才能啟動多模態考卷視覺解析。");
+                throw new Error("尚未設定 Gemini API Key！請先至「API設定」輸入金鑰，才能啟動多模態考卷視覺解析。");
             }
 
-            // 建立高抗壓備援模型候選清單：優先採用使用者選擇，隨後依序切換至超大容量的 lite 與主力模型
-            const preferredModel = settings.model || 'gemini-2.5-flash-lite';
+            // 建立高抗壓備援模型候選清單：優先採用使用者選擇（預設 gemini-3.6-flash），隨後平滑降級避峰
+            const preferredModel = settings.model || 'gemini-3.6-flash';
             const candidateModels = [
                 preferredModel,
+                'gemini-3.6-flash',
                 'gemini-2.5-flash-lite',
                 'gemini-2.5-flash',
-                'gemini-3.5-flash-lite',
                 'gemini-3.8-flash',
+                'gemini-3.5-flash-lite',
                 'gemini-flash-latest'
             ].filter((v, i, a) => a.indexOf(v) === i);
 
@@ -1771,11 +1921,19 @@
         }
 
         function saveSettings() {
-            settings.apiKey = document.getElementById('settings-api-key').value.trim();
-            settings.model = document.getElementById('settings-model').value;
-            localStorage.setItem('quiz_crafter_settings', JSON.stringify(settings));
+            const keyVal = document.getElementById('settings-api-key').value.trim();
+            const modelVal = document.getElementById('settings-model').value;
+            
+            // 條件 4：API Key 寫入 sessionStorage，刷新保留，關閉瀏覽器即銷毀
+            settings.apiKey = keyVal;
+            sessionStorage.setItem('quiz_crafter_session_api_key', keyVal);
+
+            // 模型選擇寫入 localStorage 持久保留
+            settings.model = modelVal;
+            localStorage.setItem('quiz_crafter_settings', JSON.stringify({ model: modelVal }));
+
             updateApiStatusBadge();
-            showCustomModal("成功", "Gemini API 設定已更新儲存！");
+            showCustomModal("成功", "Gemini API 設定已更新！（API Key 已安全暫存於目前會話中，重新整理不會遺失，關閉分頁後自動清除）");
         }
 
         // 燈箱控制
@@ -1833,8 +1991,10 @@
                 showCustomModal("提示", "請輸入有效的 Gemini API Key。");
                 return;
             }
+            // 條件 4：寫入 sessionStorage
             settings.apiKey = val;
-            localStorage.setItem('quiz_crafter_settings', JSON.stringify(settings));
+            sessionStorage.setItem('quiz_crafter_session_api_key', val);
+            
             document.getElementById('settings-api-key').value = val;
             updateApiStatusBadge();
             closeApiGuideModal();
