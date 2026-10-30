@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鐵電隨機存取記憶體 (FeRAM) 與 Kepler 3D 記憶體架構互動解析</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="[suspicious link removed]"></script>
+    <!-- Chart.js CDN -->
+    <script src="[suspicious link removed]"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .tab-btn.active { border-bottom: 3px solid #38bdf8; color: #38bdf8; font-weight: 600; }
+        .wafer-point { transition: all 0.2s ease; cursor: pointer; }
+        .wafer-point:hover { transform: scale(1.4); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="border-b border-slate-700 bg-slate-900/80 sticky top-0 z-50 backdrop-blur">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent">
+                    鐵電記憶體 (FeRAM) 與 Kepler 3D 架構圖樂與互動解析
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">整合 晶圓測試 (WAT/CP) 與 Kepler Compute-in-Memory 專利技術</p>
+            </div>
+            <!-- Main Navigation -->
+            <nav class="flex gap-4">
+                <button onclick="switchTab('basic')" id="tab-basic" class="tab-btn active px-4 py-2 text-sm text-slate-300">
+                    一、基本介紹
+                </button>
+                <button onclick="switchTab('interactive')" id="tab-interactive" class="tab-btn px-4 py-2 text-sm text-slate-300">
+                    二、互動式模擬說明
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-6 py-8 flex-grow w-full">
+
+        <!-- SECTION 1: 基本介紹 -->
+        <div id="section-basic" class="space-y-8">
+            
+            <!-- Card 1: 物理原理 -->
+            <div class="glass-card rounded-xl p-6">
+                <h2 class="text-xl font-bold text-sky-400 mb-4 flex items-center gap-2">
+                    <span class="p-2 bg-sky-500/20 rounded-lg">⚡</span> 1. 鐵電隨機存取記憶體 (FeRAM) 物理基礎
+                </h2>
+                <div class="grid md:grid-cols-2 gap-6 text-sm text-slate-300">
+                    <div class="space-y-3">
+                        <p><strong class="text-white">晶體極化翻轉 (Polarization Switching)：</strong> 傳統 DRAM 依靠電容儲存電荷 ($Q=CV$)，需定期刷新；FeRAM 則利用晶體內部的自發電極化方向（Polarization States）代表「0」與「1」，具備非揮發性與超高切換速度。</p>
+                        <p><strong class="text-white">關鍵物理參數：</strong> 殘留極化強度 ($+P_r, -P_r$) 決定訊號儲存視窗的大小；矯頑電場 ($+E_c, -E_c$) 代表驅動鐵電偶極矩發生翻轉所需的臨界電場。</p>
+                    </div>
+                    <div class="space-y-3">
+                        <p><strong class="text-white">二氧化鉿 (HfO₂ / HZO) 材料革命：</strong> 傳統鈣鈦礦材料 (PZT) 存在鉛污染、高溫退火敏感與去極化場問題；新型螢石結構 $\text{HfO}_2$ 在薄膜厚度 $<10\text{ nm}$ 下，透過金屬電極應力封裝與退火，可穩定關鍵的<span class="text-amber-400 font-semibold">極性正交相 ($Pca2_1$)</span>，完全相容 CMOS 製程。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: 物理架構與 3D BEOL -->
+            <div class="glass-card rounded-xl p-6">
+                <h2 class="text-xl font-bold text-indigo-400 mb-4 flex items-center gap-2">
+                    <span class="p-2 bg-indigo-500/20 rounded-lg">🧱</span> 2. Kepler 3D BEOL 物理架構與記憶體內運算 (CIM)
+                </h2>
+                <div class="grid md:grid-cols-3 gap-6 text-sm text-slate-300">
+                    <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                        <h3 class="font-bold text-white mb-2 text-base">BEOL 垂直堆疊 (Metal 4–8)</h3>
+                        <p>將 1T-1C 鐵電電容 (FeCAP) 直接建構於晶片後段金屬互連層中，不佔用昂貴的矽基板面積，底層基板則專注於高密度矽電晶體運算。</p>
+                    </div>
+                    <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                        <h3 class="font-bold text-white mb-2 text-base">高密度 MOL / MIV 金屬通孔</h3>
+                        <p>透過中間層 (MOL) 接觸點與 inter-metal vias (MIV)，將上層 3D 鐵電電容陣列與底層 Word-Line 驅動器、Sense Amp 及邏輯運算單元超高頻寬平行連結。</p>
+                    </div>
+                    <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                        <h3 class="font-bold text-white mb-2 text-base">記憶體內運算 (Compute-in-Memory)</h3>
+                        <p>將 AI 神經網絡權重直接寫入鐵電電容極化狀態，在位元線上透過電荷重分配 $Q_{col} = \sum C_{FeCAP} \cdot V_{in}$ 直接執行原位矩陣乘加 (MAC) 運算。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: 晶圓測試 -->
+            <div class="glass-card rounded-xl p-6">
+                <h2 class="text-xl font-bold text-emerald-400 mb-4 flex items-center gap-2">
+                    <span class="p-2 bg-emerald-500/20 rounded-lg">🔬</span> 3. 自動化晶圓接受測試 (WAT / CP 針測) 與 KGD 篩選
+                </h2>
+                <div class="grid md:grid-cols-2 gap-6 text-sm text-slate-300">
+                    <ul class="space-y-2 list-disc list-inside">
+                        <li><strong class="text-white">PUND 五段脈衝測試：</strong> 施加 Preset-P-U-N-D 脈衝序列，透過 $P-U$ 與 $N-D$ 扣除寄生電容位移電荷 $Q_{cap}$，精準分離出殘留極化 $2P_r$。</li>
+                        <li><strong class="text-white">半選通讀寫干擾測試：</strong> 施加預燒 Pattern 與反向補償脈衝（Counter-bias），篩選出抗領域牆蠕變 (Domain Wall Creep) 差的弱位元 (Weak Bits)。</li>
+                    </ul>
+                    <ul class="space-y-2 list-disc list-inside">
+                        <li><strong class="text-white">非接觸式 Corona-Kelvin (CnCV)：</strong> 在金屬化前透過空氣電離電荷噴灑與開爾文探針，映射全晶圓表面電位與非視覺缺陷 (NVD)。</li>
+                        <li><strong class="text-white">T1–T5 多點分層抽樣：</strong> 涵蓋晶圓中心、上下邊緣與左右區域，確保相對標準差 $\text{RSD} < 1\%$，實施 100% KGD (Known Good Die) 篩選。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Card 4: 記憶體比較 -->
+            <div class="glass-card rounded-xl p-6 overflow-x-auto">
+                <h2 class="text-xl font-bold text-amber-400 mb-4 flex items-center gap-2">
+                    <span class="p-2 bg-amber-500/20 rounded-lg">📊</span> 4. 記憶體技術比較表
+                </h2>
+                <table class="w-full text-left text-sm text-slate-300 border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-white bg-slate-800/80">
+                            <th class="p-3">記憶體類型</th>
+                            <th class="p-3">物理機制與結構</th>
+                            <th class="p-3">讀寫速度 / 延遲</th>
+                            <th class="p-3">刷新需求</th>
+                            <th class="p-3">主要優勢與限制</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800">
+                        <tr>
+                            <td class="p-3 font-semibold text-sky-300">SRAM</td>
+                            <td class="p-3">6T 交叉耦合電晶體鎖存</td>
+                            <td class="p-3 text-emerald-400">< 1 ns (極快)</td>
+                            <td class="p-3">免刷新 (揮發性)</td>
+                            <td class="p-3">速度極快但密度低、成本高，適合快取。</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold text-indigo-300">DRAM</td>
+                            <td class="p-3">1T1C 電容電荷儲存 ($Q=CV$)</td>
+                            <td class="p-3 text-amber-400">10–50 ns</td>
+                            <td class="p-3 text-red-400">需定期刷新 (~64ms)</td>
+                            <td class="p-3">容量大、成本適中，但面臨記憶體牆與刷新功耗。</td>
+                        </tr>
+                        <tr>
+                            <td class="p-3 font-semibold text-purple-300">HBM</td>
+                            <td class="p-3">3D TSV 堆疊 DRAM 陣列</td>
+                            <td class="p-3 text-emerald-400">超高頻寬 (GB/s 級)</td>
+                            <td class="p-3 text-red-400">需定期刷新</td>
+                            <td class="p-3">頻寬極高，但依賴 EUV 與 CoWoS 昂貴先進封裝。</td>
+                        </tr>
+                        <tr class="bg-sky-950/40 font-bold border-l-4 border-sky-400">
+                            <td class="p-3 text-sky-400">Kepler FeRAM</td>
+                            <td class="p-3 text-white">3D BEOL HfO₂ 鐵電電容 (1T-1C)</td>
+                            <td class="p-3 text-emerald-400">接近 SRAM 每瓦頻寬</td>
+                            <td class="p-3 text-emerald-400">零刷新 (非揮發)</td>
+                            <td class="p-3 text-sky-200">10倍 SRAM/HBM 容量、零待機功耗、直接支持 CIM 計算。</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <!-- SECTION 2: 互動式說明 -->
+        <div id="section-interactive" class="hidden space-y-8">
+            
+            <!-- Interactive 1: P-E Loop & PUND Simulator -->
+            <div class="glass-card rounded-xl p-6">
+                <h2 class="text-xl font-bold text-sky-400 mb-2">模擬器 1：鐵電極化切換與 PUND 五段脈衝波形實驗室</h2>
+                <p class="text-xs text-slate-400 mb-6">請拖曳電場控制滑桿，觀察鐵電偶極矩翻轉（$P-E$ 迴圈）與 PUND 測試時扣除寄生電容 $Q_{cap}$ 提取 $2P_r$ 的過程。</p>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Left: Canvas for P-E Loop -->
+                    <div class="bg-slate-900/90 p-4 rounded-lg border border-slate-800 flex flex-col items-center">
+                        <h3 class="text-sm font-semibold text-slate-300 mb-2">鐵電滯後迴圈 (P-E Loop) 動態模擬</h3>
+                        <canvas id="peCanvas" width="320" height="260" class="border border-slate-700 bg-slate-950 rounded"></canvas>
+                        
+                        <div class="w-full mt-4 space-y-2">
+                            <div class="flex justify-between text-xs text-slate-300">
+                                <span>外加電場 (E Field): <span id="eValue" class="text-sky-400 font-bold">0</span> kV/cm</span>
+                                <span>極化強度 (P): <span id="pValue" class="text-emerald-400 font-bold">0</span> μC/cm²</span>
+                            </div>
+                            <input type="range" id="eSlider" min="-150" max="150" value="0" class="w-full accent-sky-400">
+                        </div>
+                    </div>
+
+                    <!-- Right: PUND Pulse Curve -->
+                    <div class="bg-slate-900/90 p-4 rounded-lg border border-slate-800 flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-300 mb-2">PUND 脈衝序列與響應電流分析</h3>
+                            <div class="text-xs space-y-2 text-slate-400 bg-slate-950 p-3 rounded border border-slate-800">
+                                <p><span class="text-amber-400 font-bold">Preset：</span> 設定初始極化狀態。</p>
+                                <p><span class="text-sky-400 font-bold">P (Pulse)：</span> 翻轉電荷 = $2P_r + Q_{cap}$</p>
+                                <p><span class="text-indigo-400 font-bold">U (Up)：</span> 非翻轉電荷 = $Q_{cap}$ (純線性位移電荷)</p>
+                                <p><span class="text-emerald-400 font-bold">淨翻轉電荷：</span> $(P - U) = 2P_r$ (分離出真正的剩餘極化)</p>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-slate-800/80 rounded text-center border border-slate-700 mt-4">
+                            <span class="text-xs text-slate-300">目前計算導出淨殘留極化 $2P_r$：</span>
+                            <span class="text-lg font-bold text-emerald-400 block">48.2 μC/cm²</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive 2: 3D Stack Layer Viewer -->
+            <div class="glass-card rounded-xl p-6">
+                <h2 class="text-xl font-bold text-indigo-400 mb-2">模擬器 2：Kepler 3D BEOL 晶片層級互動檢視器</h2>
+                <p class="text-xs text-slate-400 mb-6">點擊下方不同層級按鈕，切換檢視 3D 堆疊結構細節與電性訊號傳導。</p>
+
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="space-y-2">
+                        <button onclick="selectLayer('fecap')" id="layer-btn-fecap" class="w-full p-3 text-left rounded border border-slate-700 bg-slate-800 hover:border-indigo-400 transition text-sm">
+                            <strong class="text-indigo-300 block">Top: 3D FeCAP 鐵電電容陣列</strong>
+                            <span class="text-xs text-slate-400">BEOL Metal 4-8, HfO₂ 正交相結構</span>
+                        </button>
+                        <button onclick="selectLayer('vias')" id="layer-btn-vias" class="w-full p-3 text-left rounded border border-slate-700 bg-slate-800 hover:border-indigo-400 transition text-sm">
+                            <strong class="text-sky-300 block">Middle: MOL / MIV 高密度通孔</strong>
+                            <span class="text-xs text-slate-400">柱狀/槽狀電容介面與字元線/位元線</span>
+                        </button>
+                        <button onclick="selectLayer('logic')" id="layer-btn-logic" class="w-full p-3 text-left rounded border border-slate-700 bg-slate-800 hover:border-indigo-400 transition text-sm">
+                            <strong class="text-emerald-300 block">Bottom: Silicon CMOS Active Logic</strong>
+                            <span class="text-xs text-slate-400">底層矽電晶體、Sense Amp 與 CIM MAC 單元</span>
+                        </button>
+                    </div>
+
+                    <div class="md:col-span-2 bg-slate-950 p-5 rounded-lg border border-slate-800 flex flex-col justify-between">
+                        <div>
+                            <span id="layer-tag" class="inline-block px-2 py-1 text-xs rounded bg-indigo-500/20 text-indigo-300 mb-2 font-semibold">Layer View</span>
+                            <h3 id="layer-title" class="text-lg font-bold text-white mb-2">請選擇層級</h3>
+                            <p id="layer-desc" class="text-sm text-slate-300 leading-relaxed">點擊左側控制鈕檢視細節結構說明。</p>
+                        </div>
+                        <div id="layer-spec" class="mt-4 p-3 bg-slate-900 rounded border border-slate-800 text-xs text-slate-400">
+                            <!-- Dynamic Spec info -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive 3: Wafer Probe Simulator (T1-T5) -->
+            <div class="glass-card rounded-xl p-6">
+                <h2 class="text-xl font-bold text-emerald-400 mb-2">模擬器 3：300mm 晶圓 WAT / CP 分層抽樣針測模擬</h2>
+                <p class="text-xs text-slate-400 mb-6">點擊 300mm 晶圓上的 T1–T5 測試點，檢視探針卡 (Probe Card) 與 ATE 機台於該位置擷取的殘留極化與良率參數。</p>
+
+                <div class="grid md:grid-cols-2 gap-6 items-center">
+                    <!-- Wafer SVG Graphic -->
+                    <div class="flex justify-center relative">
+                        <svg width="260" height="260" viewBox="0 0 300 300" class="bg-slate-950 rounded-full border-2 border-slate-700 shadow-inner">
+                            <!-- Wafer grid lines -->
+                            <circle cx="150" cy="150" r="140" fill="none" stroke="#334155" stroke-dasharray="4 4"/>
+                            <circle cx="150" cy="150" r="80" fill="none" stroke="#334155" stroke-dasharray="4 4"/>
+                            <line x1="150" y1="10" x2="150" y2="290" stroke="#1e293b" />
+                            <line x1="10" y1="150" x2="290" y2="150" stroke="#1e293b" />
+                            
+                            <!-- Test Points -->
+                            <!-- T1 Center -->
+                            <circle onclick="probePoint('T1')" cx="150" cy="150" r="12" class="wafer-point fill-sky-400 stroke-white stroke-2" />
+                            <text x="150" y="154" font-size="10" font-weight="bold" text-anchor="middle" fill="#000">T1</text>
+                            
+                            <!-- T2 Upper Edge -->
+                            <circle onclick="probePoint('T2')" cx="150" cy="45" r="12" class="wafer-point fill-emerald-400 stroke-white stroke-2" />
+                            <text x="150" y="49" font-size="10" font-weight="bold" text-anchor="middle" fill="#000">T2</text>
+
+                            <!-- T3 Lower Edge -->
+                            <circle onclick="probePoint('T3')" cx="150" cy="255" r="12" class="wafer-point fill-emerald-400 stroke-white stroke-2" />
+                            <text x="150" y="259" font-size="10" font-weight="bold" text-anchor="middle" fill="#000">T3</text>
+
+                            <!-- T4 Left Intermediate -->
+                            <circle onclick="probePoint('T4')" cx="50" cy="150" r="12" class="wafer-point fill-indigo-400 stroke-white stroke-2" />
+                            <text x="50" y="154" font-size="10" font-weight="bold" text-anchor="middle" fill="#000">T4</text>
+
+                            <!-- T5 Right Intermediate -->
+                            <circle onclick="probePoint('T5')" cx="250" cy="150" r="12" class="wafer-point fill-indigo-400 stroke-white stroke-2" />
+                            <text x="250" y="154" font-size="10" font-weight="bold" text-anchor="middle" fill="#000">T5</text>
+                        </svg>
+                    </div>
+
+                    <!-- Probe Data Display -->
+                    <div class="bg-slate-950 p-5 rounded-lg border border-slate-800 space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                            <h3 id="probe-title" class="text-base font-bold text-sky-400">測試點：T1 (晶圓中心 Center)</h3>
+                            <span class="px-2 py-0.5 text-xs bg-emerald-500/20 text-emerald-300 rounded font-semibold">KGD 合格</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+                                <span class="text-slate-400 block">殘留極化 2Pr:</span>
+                                <span id="probe-pr" class="text-sm font-bold text-white">48.5 μC/cm²</span>
+                            </div>
+                            <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+                                <span class="text-slate-400 block">矯頑電壓 Vc:</span>
+                                <span id="probe-vc" class="text-sm font-bold text-white">0.92 V</span>
+                            </div>
+                            <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+                                <span class="text-slate-400 block">漏電流 I_leak:</span>
+                                <span id="probe-ileak" class="text-sm font-bold text-white">1.2 pA</span>
+                            </div>
+                            <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+                                <span class="text-slate-400 block">TLP 介電崩潰 E_BD:</span>
+                                <span id="probe-ebd" class="text-sm font-bold text-white">4.8 MV/cm</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400 pt-2">全晶圓 5 點相對標準差 <strong class="text-emerald-400">RSD = 0.42%</strong> (&lt;1%)，證明 ALD 厚度與結晶退火均勻度極佳。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive 4: Memory Radar Chart -->
+            <div class="glass-card rounded-xl p-6">
+                <h2 class="text-xl font-bold text-amber-400 mb-2">模擬器 4：記憶體技術多維效能對比圖</h2>
+                <p class="text-xs text-slate-400 mb-6">比較 SRAM、DRAM、HBM 與 Kepler FeRAM 在五大維度（密度、速度、每瓦頻寬、非揮發性、製程成本）的綜合評分。</p>
+
+                <div class="max-w-md mx-auto">
+                    <canvas id="radarChart" width="300" height="300"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-500">
+        鐵電記憶體 (FeRAM) 與 Kepler 3D 晶片架構圖解專頁
+    </footer>
+
+    <!-- JavaScript for Interactivity & Chart.js -->
+    <script>
+        // Tab switching logic
+        function switchTab(tab) {
+            document.getElementById('section-basic').classList.add('hidden');
+            document.getElementById('section-interactive').classList.add('hidden');
+            document.getElementById('tab-basic').classList.remove('active');
+            document.getElementById('tab-interactive').classList.remove('active');
+
+            if (tab === 'basic') {
+                document.getElementById('section-basic').classList.remove('hidden');
+                document.getElementById('tab-basic').classList.add('active');
+            } else {
+                document.getElementById('section-interactive').classList.remove('hidden');
+                document.getElementById('tab-interactive').classList.add('active');
+                initRadarChart();
+            }
+        }
+
+        // P-E Loop Canvas Simulation
+        const canvas = document.getElementById('peCanvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('eSlider');
+        const eValText = document.getElementById('eValue');
+        const pValText = document.getElementById('pValue');
+
+        function drawPE(eInput) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Axes
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(20, 130); ctx.lineTo(300, 130); // E axis
+            ctx.moveTo(160, 20); ctx.lineTo(160, 240); // P axis
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px sans-serif';
+            ctx.fillText('+E', 285, 145);
+            ctx.fillText('-E', 25, 145);
+            ctx.fillText('+P', 165, 30);
+            ctx.fillText('-P', 165, 235);
+
+            // Calculate hysteresis point based on formula
+            let e = parseFloat(eInput);
+            let p = 25 * Math.tanh((e + (e >= 0 ? -30 : 30)) / 40);
+            if (isNaN(p)) p = 0;
+
+            // Draw hysteresis curve placeholder
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let x = -140; x <= 140; x += 5) {
+                let y1 = 80 * Math.tanh((x - 25) / 45);
+                let canvasX = 160 + x;
+                let canvasY = 130 - y1;
+                if (x === -140) ctx.moveTo(canvasX, canvasY);
+                else ctx.lineTo(canvasX, canvasY);
+            }
+            for (let x = 140; x >= -140; x -= 5) {
+                let y2 = 80 * Math.tanh((x + 25) / 45);
+                let canvasX = 160 + x;
+                let canvasY = 130 - y2;
+                ctx.lineTo(canvasX, canvasY);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // Current Operating Point
+            let currentX = 160 + e;
+            let currentY = 130 - (p * 3.2);
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            eValText.innerText = e;
+            pValueText.innerText = (p * 0.95).toFixed(1);
+        }
+
+        slider.addEventListener('input', (e) => drawPE(e.target.value));
+        drawPE(0);
+
+        // Layer selection logic
+        const layerData = {
+            fecap: {
+                tag: 'Top Layer',
+                title: '3D FeCAP 鐵電電容陣列 (BEOL Metal 4-8)',
+                desc: '採用高長寬比柱狀/槽狀電容幾何結構，介電層為厚度 <10nm 的 HfO₂/HZO 薄膜。頂/底電極採用 TiN/TaN 應力封裝，確保結晶過程順利穩定極性正交相 (Pca2₁)。',
+                spec: '物理參數：殘留極化 2Pr ≥ 45 μC/cm² | 切換電壓 Vc ≈ 0.9V | 寫入壽命 > 10¹² 次'
+            },
+            vias: {
+                tag: 'Middle Layer',
+                title: 'MOL / MIV 高密度金屬互連通孔',
+                desc: '包含 Middle-of-Line (MOL) 接觸點與 Inter-Metal Vias (MIVs)，將上層 3D 鐵電陣列與底層邏輯電路進行高密度平行互連，提供極高資料傳輸頻寬。',
+                spec: '互連規格：垂直通孔阻抗 < 2 Ω | 寄生電容 < 0.1 fF | 支持 Word-Line Boosting 高壓驅動'
+            },
+            logic: {
+                tag: 'Bottom Layer',
+                title: 'Silicon Active CMOS Compute Logic',
+                desc: '位於底層矽基板的邏輯電晶體，包含 Word-Line 驅動電路、Sense Amplifier 感測放大器與 CIM 陣列點積計算電路，負責執行矩陣乘加 (MAC) 運算。',
+                spec: '運算規格：支持原位內存計算 | 能效比高出傳統 HBM 5-10 倍 | 支持反向脈衝干擾補償'
+            }
+        };
+
+        function selectLayer(layerKey) {
+            const data = layerData[layerKey];
+            document.getElementById('layer-tag').innerText = data.tag;
+            document.getElementById('layer-title').innerText = data.title;
+            document.getElementById('layer-desc').innerText = data.desc;
+            document.getElementById('layer-spec').innerText = data.spec;
+        }
+        selectLayer('fecap');
+
+        // Wafer Probe Point Logic
+        const probeData = {
+            T1: { title: 'T1 (晶圓中心 Center)', pr: '48.5 μC/cm²', vc: '0.92 V', ileak: '1.2 pA', ebd: '4.8 MV/cm' },
+            T2: { title: 'T2 (上邊緣 Upper Edge)', pr: '47.8 μC/cm²', vc: '0.94 V', ileak: '1.5 pA', ebd: '4.6 MV/cm' },
+            T3: { title: 'T3 (下邊緣 Lower Edge)', pr: '47.9 μC/cm²', vc: '0.93 V', ileak: '1.4 pA', ebd: '4.7 MV/cm' },
+            T4: { title: 'T4 (左中段 Left Mid)', pr: '48.2 μC/cm²', vc: '0.92 V', ileak: '1.3 pA', ebd: '4.8 MV/cm' },
+            T5: { title: 'T5 (右中段 Right Mid)', pr: '48.3 μC/cm²', vc: '0.93 V', ileak: '1.3 pA', ebd: '4.7 MV/cm' }
+        };
+
+        function probePoint(pointKey) {
+            const d = probeData[pointKey];
+            document.getElementById('probe-title').innerText = '測試點：' + d.title;
+            document.getElementById('probe-pr').innerText = d.pr;
+            document.getElementById('probe-vc').innerText = d.vc;
+            document.getElementById('probe-ileak').innerText = d.ileak;
+            document.getElementById('probe-ebd').innerText = d.ebd;
+        }
+
+        // Radar Chart Initialization
+        let radarInitialized = false;
+        function initRadarChart() {
+            if (radarInitialized) return;
+            radarInitialized = true;
+
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['儲存密度', '存取速度', '每瓦頻寬 (能效)', '非揮發/零刷新', '製程成本優勢'],
+                    datasets: [
+                        {
+                            label: 'SRAM',
+                            data: [1, 6, 11, 20],
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.1)'
+                        },
+                        {
+                            label: 'HBM',
+                            data: [1, 2, 6, 20, 21],
+                            borderColor: '#a855f7',
+                            backgroundColor: 'rgba(168, 85, 247, 0.1)'
+                        },
+                        {
+                            label: 'Kepler FeRAM',
+                            data: [11, 20, 22],
+                            borderColor: '#34d399',
+                            backgroundColor: 'rgba(52, 211, 153, 0.2)',
+                            borderWidth: 3
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: { color: '#334155' },
+                            grid: { color: '#334155' },
+                            pointLabels: { color: '#f8fafc', font: { size: 11 } },
+                            ticks: { display: false, backdropColor: 'transparent' },
+                            suggestedMin: 0,
+                            suggestedMax: 10
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#f8fafc', font: { size: 12 } } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
