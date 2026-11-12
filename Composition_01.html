@@ -1592,87 +1592,126 @@ async function runCorrectionCore({ studentName, grade, genre, title, promptGuide
 async function processBatchQueue() {
     const rows = document.querySelectorAll('#batch-table-body tr');
     if (rows.length === 0) {
-        showToast('隊列中目前沒有作文！', 'warning');
+        if (typeof showToast === 'function') showToast('隊列中目前沒有作文！', 'warning');
         return;
     }
 
     const btn = document.getElementById('btn-process-batch');
     if (btn) btn.disabled = true;
 
-    document.getElementById('batch-progress-box').classList.remove('hidden');
+    const progressBox = document.getElementById('batch-progress-box');
+    if (progressBox) progressBox.classList.remove('hidden');
+
+    // 1. 備份單篇工作台原本的輸入內容，批量完成後自動還原
+    const elStudent = document.getElementById('input-student');
+    const elGrade = document.getElementById('input-grade');
+    const elGenre = document.getElementById('input-genre');
+    const elTitle = document.getElementById('input-title');
+    const elEssay = document.getElementById('input-essay');
+
+    const backup = {
+        student: elStudent?.value || '',
+        grade: elGrade?.value || '',
+        genre: elGenre?.value || '',
+        title: elTitle?.value || '',
+        essay: elEssay?.value || ''
+    };
+
+    // 相容不同 <select> value 與顯示文字的賦值工具
+    const setSelectSmart = (selectEl, val) => {
+        if (!selectEl || !val) return;
+        selectEl.value = val;
+        if (selectEl.value !== val) {
+            const opt = Array.from(selectEl.options).find(o => o.value === val || o.text.includes(val));
+            if (opt) selectEl.value = opt.value;
+        }
+    };
+
     let completed = 0;
     let successCount = 0;
 
-    // 取得工作台上的通用命題指引與臨時 Prompt（若批量也想套用同一份題目要求）
-    const sharedPromptGuide = document.getElementById('input-prompt-guide')?.value?.trim() || '';
-    const sharedTempPrompt = document.getElementById('input-temp-prompt')?.value?.trim() || '';
-
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
+        const selects = row.querySelectorAll('select');
         const student = row.querySelector('.batch-student')?.value?.trim() || `學生${i + 1}`;
-        const grade = row.querySelector('.batch-grade')?.value || '國小高年級';
-        // 關鍵修正：補齊 v2.1 新增的「體裁」欄位讀取（相容 class 或第二個 select）
-        const genre = row.querySelector('.batch-genre')?.value || row.querySelectorAll('select')[1]?.value || '記敘文';
+        const grade = row.querySelector('.batch-grade')?.value || selects[0]?.value || '國小高年級';
+        const genre = row.querySelector('.batch-genre')?.value || selects[1]?.value || '記敘文';
         const title = row.querySelector('.batch-title')?.value?.trim() || '未命題作文';
-        const essay = row.querySelector('.batch-essay')?.value?.trim();
+        const essay = row.querySelector('.batch-essay')?.value?.trim() || '';
         const statusSpan = row.querySelector('.batch-status');
 
         if (!essay) {
-            statusSpan.className = "batch-status px-2 py-0.5 rounded bg-slate-100 text-slate-500";
-            statusSpan.innerText = "內容空白略過";
+            if (statusSpan) {
+                statusSpan.className = "batch-status px-2 py-0.5 rounded bg-slate-100 text-slate-500";
+                statusSpan.innerText = "空白略過";
+            }
             completed++;
             continue;
         }
 
-        statusSpan.className = "batch-status px-2 py-0.5 rounded bg-sky-100 text-sky-700 animate-pulse";
-        statusSpan.innerText = "AI 批改中...";
-        statusSpan.removeAttribute('title');
+        if (statusSpan) {
+            statusSpan.className = "batch-status px-2 py-0.5 rounded bg-sky-100 text-sky-700 animate-pulse";
+            statusSpan.innerText = "AI 批改中...";
+            statusSpan.removeAttribute('title');
+        }
+
+        // 2. 將本列資料填入單篇工作台欄位，100% 複用單篇批改流程
+        if (elStudent) elStudent.value = student;
+        setSelectSmart(elGrade, grade);
+        setSelectSmart(elGenre, genre);
+        if (elTitle) elTitle.value = title;
+        if (elEssay) elEssay.value = essay;
 
         try {
-            const report = await runCorrectionCore({
-                studentName: student,
-                grade: grade,
-                genre: genre,
-                title: title,
-                promptGuide: sharedPromptGuide,
-                tempPrompt: sharedTempPrompt,
-                essayText: essay
-            });
+            // 直接呼叫您已經驗證可正常運作的單篇批改函式
+            await startSingleCorrection();
 
-            saveReportToHistory({
-                id: 'rep_' + Date.now() + '_' + i,
-                timestamp: new Date().toISOString().split('T')[0],
-                studentName: student,
-                grade: grade,
-                genre: genre,
-                title: title,
-                essayText: essay,
-                ...report
-            });
-
-            statusSpan.className = "batch-status px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium";
-            statusSpan.innerText = `完成 (${report.overallScore}分)`;
-            successCount++;
+            // 檢查單篇報告區塊是否成功顯示（若 API 失敗，startSingleCorrection 會保持其為 hidden）
+            const isSuccess = !document.getElementById('report-container')?.classList.contains('hidden');
+            if (isSuccess) {
+                const scoreText = (typeof currentReportData !== 'undefined' && currentReportData?.overallScore != null)
+                    ? `${currentReportData.overallScore}分`
+                    : '已完成';
+                if (statusSpan) {
+                    statusSpan.className = "batch-status px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium";
+                    statusSpan.innerText = `完成 (${scoreText})`;
+                }
+                successCount++;
+            } else {
+                throw new Error('單篇批改未產生報告，請檢查 API 連線或配額');
+            }
         } catch (err) {
-            // 將具體錯誤印出至 Console 並綁定至狀態標籤的 Hover 提示
-            console.error(`[批量批改失敗] 第 ${i + 1} 篇 (${student}):`, err);
-            statusSpan.className = "batch-status px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium cursor-help";
-            statusSpan.innerText = "失敗";
-            statusSpan.title = `錯誤原因：${err.message || '未知錯誤'}`;
+            console.error(`[批量第 ${i + 1} 篇失敗]`, err);
+            if (statusSpan) {
+                statusSpan.className = "batch-status px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium cursor-help";
+                statusSpan.innerText = "失敗";
+                statusSpan.title = err.message || '批改發生錯誤';
+            }
         }
 
         completed++;
-        document.getElementById('batch-progress-text').innerText = `${completed} / ${rows.length} 已完成`;
-        document.getElementById('batch-progress-bar').style.width = `${(completed / rows.length) * 100}%`;
+        const progressText = document.getElementById('batch-progress-text');
+        const progressBar = document.getElementById('batch-progress-bar');
+        if (progressText) progressText.innerText = `${completed} / ${rows.length} 已完成`;
+        if (progressBar) progressBar.style.width = `${(completed / rows.length) * 100}%`;
 
-        // 控頻延遲保護：若還有下一篇，等待 1.5 秒避免觸發 API 429 限速
+        // 控頻保護：每篇間隔 1.5 秒避免觸發 API 限速
         if (i < rows.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 1500));
         }
     }
 
+    // 3. 還原單篇工作台原本的欄位內容
+    if (elStudent) elStudent.value = backup.student;
+    if (elGrade) elGrade.value = backup.grade;
+    if (elGenre) elGenre.value = backup.genre;
+    if (elTitle) elTitle.value = backup.title;
+    if (elEssay) elEssay.value = backup.essay;
+
     if (btn) btn.disabled = false;
-    showToast(`批量處理結束！成功 ${successCount} 篇，失敗 ${rows.length - successCount} 篇（滑鼠移至「失敗」標籤可看原因）`, successCount > 0 ? 'success' : 'error');
+    if (typeof showToast === 'function') {
+        showToast(`批量處理完成！成功 ${successCount} 篇，失敗 ${rows.length - successCount} 篇`, successCount > 0 ? 'success' : 'error');
+    }
 }
 
         // --- CLASS DASHBOARD & AGGREGATED METRICS ---
