@@ -1566,60 +1566,114 @@ ${promptGuide ? `注意：必須在 teacherSummary.actionableTips 中評估是�
 
         const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-        async function processBatchQueue() {
-            const rows = document.querySelectorAll('#batch-table-body tr');
-            if (rows.length === 0) {
-                showToast('隊列中沒有待處理作文！', 'warning');
-                return;
-            }
+        // 1. 確保單篇與批量共用同一個核心批改入口（請對應您現有的核心函式名稱）
+async function runCorrectionCore({ studentName, grade, genre, title, promptGuide = '', tempPrompt = '', essayText }) {
+    // 若開啟頂端「個資去識別化」開關，自動替換學生姓名
+    const isAnonymized = document.getElementById('anonymize-toggle')?.checked;
+    const safeStudentName = isAnonymized ? '學生A' : studentName;
 
-            document.getElementById('batch-progress-box').classList.remove('hidden');
-            let completed = 0;
+    // 呼叫您單篇批改正在使用的主要函式（請確認函式名稱與參數順序一致）
+    // 例如：callUniversalLLM 或 callGeminiApiForCorrection
+    const rawResult = await callUniversalLLM({
+        studentName: safeStudentName,
+        grade: grade,
+        genre: genre,
+        title: title,
+        promptGuide: promptGuide,
+        tempPrompt: tempPrompt,
+        essayText: essayText
+    });
 
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const student = row.querySelector('.batch-student').value || `學生${i+1}`;
-                const grade = row.querySelector('.batch-grade').value;
-                const genre = row.querySelector('.batch-genre').value;
-                const title = row.querySelector('.batch-title').value || '未命題';
-                const essay = row.querySelector('.batch-essay').value;
-                const statusSpan = row.querySelector('.batch-status');
+    // 經過與單篇相同的資料標準化過濾器，避免欄位名稱差異導致 0 分或空白
+    return typeof normalizeReportData === 'function' ? normalizeReportData(rawResult) : rawResult;
+}
 
-                if (!essay) continue;
+// 2. 修正後的批量處理隊列函式
+async function processBatchQueue() {
+    const rows = document.querySelectorAll('#batch-table-body tr');
+    if (rows.length === 0) {
+        showToast('隊列中目前沒有作文！', 'warning');
+        return;
+    }
 
-                statusSpan.className = "batch-status px-2 py-0.5 rounded bg-sky-100 text-sky-700 animate-pulse";
-                statusSpan.innerText = "AI 批改中...";
+    const btn = document.getElementById('btn-process-batch');
+    if (btn) btn.disabled = true;
 
-                try {
-                    const report = await callGeminiApiForCorrection(student, grade, genre, title, "", "", essay);
-                    saveReportToHistory({
-                        id: 'rep_' + Date.now() + '_' + i,
-                        timestamp: new Date().toISOString().split('T')[0],
-                        studentName: student,
-                        grade,
-                        genre,
-                        title,
-                        essayText: essay,
-                        teacherCustomNote: "無補充註記",
-                        ...report
-                    });
+    document.getElementById('batch-progress-box').classList.remove('hidden');
+    let completed = 0;
+    let successCount = 0;
 
-                    statusSpan.className = "batch-status px-2 py-0.5 rounded bg-emerald-100 text-emerald-800";
-                    statusSpan.innerText = "已完成";
-                } catch (e) {
-                    statusSpan.className = "batch-status px-2 py-0.5 rounded bg-red-100 text-red-800";
-                    statusSpan.innerText = "失敗";
-                }
+    // 取得工作台上的通用命題指引與臨時 Prompt（若批量也想套用同一份題目要求）
+    const sharedPromptGuide = document.getElementById('input-prompt-guide')?.value?.trim() || '';
+    const sharedTempPrompt = document.getElementById('input-temp-prompt')?.value?.trim() || '';
 
-                completed++;
-                document.getElementById('batch-progress-text').innerText = `${completed} / ${rows.length} 已完成`;
-                document.getElementById('batch-progress-bar').style.width = `${(completed / rows.length) * 100}%`;
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const student = row.querySelector('.batch-student')?.value?.trim() || `學生${i + 1}`;
+        const grade = row.querySelector('.batch-grade')?.value || '國小高年級';
+        // 關鍵修正：補齊 v2.1 新增的「體裁」欄位讀取（相容 class 或第二個 select）
+        const genre = row.querySelector('.batch-genre')?.value || row.querySelectorAll('select')[1]?.value || '記敘文';
+        const title = row.querySelector('.batch-title')?.value?.trim() || '未命題作文';
+        const essay = row.querySelector('.batch-essay')?.value?.trim();
+        const statusSpan = row.querySelector('.batch-status');
 
-                await sleep(1500); // 延遲避免 429 API rate limit
-            }
-
-            showToast('批量作業完成！報告已自動儲存至歷史庫。', 'success');
+        if (!essay) {
+            statusSpan.className = "batch-status px-2 py-0.5 rounded bg-slate-100 text-slate-500";
+            statusSpan.innerText = "內容空白略過";
+            completed++;
+            continue;
         }
+
+        statusSpan.className = "batch-status px-2 py-0.5 rounded bg-sky-100 text-sky-700 animate-pulse";
+        statusSpan.innerText = "AI 批改中...";
+        statusSpan.removeAttribute('title');
+
+        try {
+            const report = await runCorrectionCore({
+                studentName: student,
+                grade: grade,
+                genre: genre,
+                title: title,
+                promptGuide: sharedPromptGuide,
+                tempPrompt: sharedTempPrompt,
+                essayText: essay
+            });
+
+            saveReportToHistory({
+                id: 'rep_' + Date.now() + '_' + i,
+                timestamp: new Date().toISOString().split('T')[0],
+                studentName: student,
+                grade: grade,
+                genre: genre,
+                title: title,
+                essayText: essay,
+                ...report
+            });
+
+            statusSpan.className = "batch-status px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium";
+            statusSpan.innerText = `完成 (${report.overallScore}分)`;
+            successCount++;
+        } catch (err) {
+            // 將具體錯誤印出至 Console 並綁定至狀態標籤的 Hover 提示
+            console.error(`[批量批改失敗] 第 ${i + 1} 篇 (${student}):`, err);
+            statusSpan.className = "batch-status px-2 py-0.5 rounded bg-red-100 text-red-700 font-medium cursor-help";
+            statusSpan.innerText = "失敗";
+            statusSpan.title = `錯誤原因：${err.message || '未知錯誤'}`;
+        }
+
+        completed++;
+        document.getElementById('batch-progress-text').innerText = `${completed} / ${rows.length} 已完成`;
+        document.getElementById('batch-progress-bar').style.width = `${(completed / rows.length) * 100}%`;
+
+        // 控頻延遲保護：若還有下一篇，等待 1.5 秒避免觸發 API 429 限速
+        if (i < rows.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+    }
+
+    if (btn) btn.disabled = false;
+    showToast(`批量處理結束！成功 ${successCount} 篇，失敗 ${rows.length - successCount} 篇（滑鼠移至「失敗」標籤可看原因）`, successCount > 0 ? 'success' : 'error');
+}
 
         // --- CLASS DASHBOARD & AGGREGATED METRICS ---
         function renderClassDashboard() {
