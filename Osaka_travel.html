@@ -202,7 +202,7 @@
           Day 2・11/26 環球影城
         </button>
         <button data-tab="day3" class="tab-btn whitespace-nowrap px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition bg-stone-100 text-stone-700 hover:bg-stone-200">
-          Day 3・11/27 京都漫步
+          Day 3・11/27 京都(稻荷/祇園)
         </button>
         <button data-tab="day4" class="tab-btn whitespace-nowrap px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition bg-stone-100 text-stone-700 hover:bg-stone-200">
           Day 4・11/28 阿倍野/通天閣
@@ -259,21 +259,27 @@
               </div>
             </div>
             <div id="headcount-status-banner" class="bg-emerald-100/80 border border-emerald-300 text-emerald-900 rounded-xl px-3 py-1.5 text-xs font-bold flex flex-wrap items-center justify-between gap-2">
-              <span>✅ 目前人數核對：4位大人 + 1位小學生 + 2位幼兒 ＝ 共 7 人（符合免票規則，4大最多可免費帶8幼兒）</span>
+              <span>✅ 目前人數核對：4位大人 + 1位小學生 + 2位幼兒 ＝ 共 7 人（符合免票規則，4大最多可免費帶8幼兒，尚餘 6 個免費名額）</span>
             </div>
           </div>
 
-          <!-- Interactive Age Controls (Both Kids Controls Interactive) -->
+          <!-- Interactive Age Controls -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <!-- Fixed 4 Adults -->
+            <!-- Interactive Adults (12+) -->
             <div class="bg-stone-50 border border-stone-200 rounded-2xl p-4 flex flex-col justify-between">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-stone-500">固定成員（全票）</span>
-                <span class="text-[11px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded-full font-bold">固定 4 人</span>
+                <span class="text-xs font-bold text-stone-500">大人全票（預設 4 位）</span>
+                <span class="text-[11px] bg-indigoJp text-white px-2 py-0.5 rounded-full font-bold">1–8人</span>
               </div>
               <div class="flex items-center justify-between mt-2.5">
                 <span class="font-bold text-indigoJp text-base">🧑 大人（12歲+）</span>
-                <span class="text-2xl font-black text-indigoJp">4 <span class="text-xs font-normal text-stone-500">位</span></span>
+                <div class="flex items-center gap-2">
+                  <button type="button" id="btn-adult-minus" aria-label="減少大人人數"
+                    class="w-9 h-9 rounded-xl bg-white border border-stone-300 font-black text-lg text-stone-700 hover:bg-stone-100 active:scale-95 transition flex items-center justify-center shadow-sm">−</button>
+                  <span id="adult-count-display" class="text-2xl font-black text-indigoJp w-6 text-center">4</span>
+                  <button type="button" id="btn-adult-plus" aria-label="增加大人人數"
+                    class="w-9 h-9 rounded-xl bg-white border border-stone-300 font-black text-lg text-stone-700 hover:bg-stone-100 active:scale-95 transition flex items-center justify-center shadow-sm">+</button>
+                </div>
               </div>
               <div class="text-xs text-stone-500 mt-1.5">建議直接刷成人 ICOCA / Apple Pay</div>
             </div>
@@ -301,7 +307,7 @@
             <div class="bg-emerald-50/80 border-2 border-emerald-500/40 rounded-2xl p-4 flex flex-col justify-between">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-emerald-700">免費同行（車資 ¥0）</span>
-                <span class="text-[11px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">0～3人</span>
+                <span id="free-quota-badge" class="text-[11px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">尚餘 6 免費名額</span>
               </div>
               <div class="flex items-center justify-between mt-2.5">
                 <span class="font-bold text-emerald-950 text-base">👶 1–5歲幼兒</span>
@@ -313,17 +319,17 @@
                     class="w-9 h-9 rounded-xl bg-white border border-emerald-300 font-black text-lg text-emerald-800 hover:bg-emerald-100 active:scale-95 transition flex items-center justify-center shadow-sm">+</button>
                 </div>
               </div>
-              <div class="text-xs text-emerald-700 mt-1.5 font-medium">✨ 3位小朋友總數自動連動維持 3 人</div>
+              <div class="text-xs text-emerald-700 mt-1.5 font-medium">✨ 小朋友人數（0–3人）可自由調整</div>
             </div>
           </div>
 
           <!-- Quick Preset Pills -->
           <div class="flex flex-wrap items-center gap-2">
             <span class="text-xs font-bold text-stone-500">快速套用組合：</span>
-            <button type="button" data-preset="0" class="preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-stone-300 bg-white hover:border-indigoJp transition">0小學生 + 3幼兒</button>
-            <button type="button" data-preset="1" class="preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-indigoJp bg-indigoJp text-white transition">1小學生 + 2幼兒</button>
-            <button type="button" data-preset="2" class="preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-stone-300 bg-white hover:border-indigoJp transition">2小學生 + 1幼兒</button>
-            <button type="button" data-preset="3" class="preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-stone-300 bg-white hover:border-indigoJp transition">3小學生 + 0幼兒</button>
+            <button type="button" data-preset-elem="0" data-preset-pre="3" class="preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-stone-300 bg-white hover:border-indigoJp transition">0小學生 + 3幼兒</button>
+            <button type="button" data-preset-elem="1" data-preset-pre="2" class="preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-indigoJp bg-indigoJp text-white transition">1小學生 + 2幼兒</button>
+            <button type="button" data-preset-elem="2" data-preset-pre="1" class="preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-stone-300 bg-white hover:border-indigoJp transition">2小學生 + 1幼兒</button>
+            <button type="button" data-preset-elem="3" data-preset-pre="0" class="preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-stone-300 bg-white hover:border-indigoJp transition">3小學生 + 0幼兒</button>
           </div>
 
           <!-- Day 5 Train Option Selector + 5-Day Grand Total & Per-Person Average Box -->
@@ -346,19 +352,22 @@
 
               <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:text-right">
                 <div class="bg-white/90 border border-stone-200 rounded-2xl px-4 py-2.5">
-                  <div class="text-[11px] font-bold text-stone-500">平均每人交通費（÷7人）</div>
+                  <div id="avg-per-person-label" class="text-[11px] font-bold text-stone-500">平均每人交通費（÷7人）</div>
                   <div class="text-xl sm:text-2xl font-black text-indigoJp mt-0.5">
                     ¥<span id="avg-per-person-jpy">0</span>
                   </div>
-                  <div class="text-[10px] text-stone-400">全團7人平攤參考</div>
+                  <div class="text-[11px] font-bold text-stone-500">約 NT$ <span id="avg-per-person-twd">0</span></div>
                 </div>
 
                 <div class="bg-white border-2 border-torii/30 rounded-2xl px-4 py-2.5 shadow-sm">
-                  <div class="text-[11px] font-bold text-stone-500">5天交通總預算（7人合計）</div>
+                  <div id="grand-total-label" class="text-[11px] font-bold text-stone-500">5天交通總預算（7人合計）</div>
                   <div class="text-2xl sm:text-3xl font-black text-torii tracking-tight mt-0.5">
                     ¥<span id="grand-total-jpy">0</span>
                   </div>
-                  <div id="grand-total-summary" class="text-[11px] text-stone-600 font-medium">
+                  <div class="text-xs font-bold text-amber-800">
+                    約台幣 NT$ <span id="grand-total-twd">0</span> <span class="text-[10px] font-normal text-stone-400">(匯率0.215估)</span>
+                  </div>
+                  <div id="grand-total-summary" class="text-[11px] text-stone-600 font-medium mt-0.5">
                     大人4位 + 兒童1位（2幼兒免費）
                   </div>
                 </div>
@@ -380,7 +389,7 @@
               <button type="button" data-jump="day3" class="bg-white hover:bg-amber-50 border border-stone-200 rounded-xl p-2.5 transition text-left sm:text-center">
                 <div class="text-[11px] font-bold text-stone-400">Day 3 (11/27)</div>
                 <div class="text-sm font-black text-indigoJp mt-0.5">¥<span id="sub-day3">0</span></div>
-                <div class="text-[11px] text-stone-500 truncate">京都東山➔河原町</div>
+                <div class="text-[11px] text-stone-500 truncate">伏見稻荷➔祇園</div>
               </button>
               <button type="button" data-jump="day4" class="bg-white hover:bg-amber-50 border border-stone-200 rounded-xl p-2.5 transition text-left sm:text-center">
                 <div class="text-[11px] font-bold text-stone-400">Day 4 (11/28)</div>
@@ -821,26 +830,26 @@
           <div class="flex flex-wrap items-center gap-2">
             <span class="bg-emerald-700 text-white text-xs font-black px-2.5 py-1 rounded-lg">DAY 3</span>
             <span class="text-sm font-bold text-torii">2026/11/27（週五）</span>
-            <span class="text-xs bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">⛩️ 京都「由東向西」悠閒散步路線</span>
+            <span class="text-xs bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">⛩️ 京都悠閒一日遊・新增伏見稻荷第一站</span>
           </div>
-          <h2 class="text-xl sm:text-2xl font-black text-ink mt-1.5">八坂神社 ➔ 花見小路 ➔ 錦市場 ➔ 錦天滿宮 ➔ 新京極／寺町京極商店街</h2>
-          <p class="text-xs sm:text-sm text-stone-600 mt-1">全程地鐵＋京阪／阪急電車（0公車），下午全程平路與石板路散步約 2.5～3 公里，親子輕鬆無負擔。</p>
+          <h2 class="text-xl sm:text-2xl font-black text-ink mt-1.5">伏見稻荷大社 ➔ 八坂神社 ➔ 花見小路 ➔ 錦市場 ➔ 錦天滿宮 ➔ 新京極／寺町京極</h2>
+          <p class="text-xs sm:text-sm text-stone-600 mt-1">全程地鐵＋京阪／阪急電車（0公車），上午先訪伏見稻荷千本鳥居，下午「由東向西」平地悠閒漫步約 2.5～3 公里。</p>
         </div>
         <div class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 text-right shrink-0">
-          <div class="text-[11px] font-bold text-amber-800">本日 7 人電車總計</div>
+          <div class="day-total-label text-[11px] font-bold text-amber-800">本日 7 人電車總計</div>
           <div class="text-xl font-black text-torii">¥<span class="day-subtotal" data-day="day3">0</span></div>
         </div>
       </div>
 
-      <!-- Transit 3-1 -->
-      <div class="transit-card bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden" data-day="day3" data-adult="680" data-child="350">
+      <!-- Transit 3-1: Hotel -> Fushimi Inari -->
+      <div class="transit-card bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden" data-day="day3" data-adult="670" data-child="340">
         <div class="bg-stone-50 px-5 py-3.5 border-b border-stone-200/80 flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <span class="w-7 h-7 rounded-full bg-emerald-700 text-white text-xs font-black flex items-center justify-center">1</span>
-            <h3 class="font-black text-base sm:text-lg text-indigoJp">谷町君酒店 ➔ 祇園四條站</h3>
+            <h3 class="font-black text-base sm:text-lg text-indigoJp">谷町君酒店 ➔ 伏見稻荷大社</h3>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-xs font-bold bg-blue-100 text-indigoJp px-2.5 py-1 rounded-lg">⏱ 約 1 小時 15～20 分</span>
+            <span class="text-xs font-bold bg-blue-100 text-indigoJp px-2.5 py-1 rounded-lg">⏱ 約 1 小時 15 分</span>
             <span class="fare-badge text-xs font-black bg-torii text-white px-3 py-1 rounded-lg shadow-sm">本段7人小計：¥0</span>
           </div>
         </div>
@@ -848,18 +857,85 @@
           <div class="flex items-start gap-3">
             <span class="shrink-0 bg-[#1D7F44] text-white text-xs font-bold px-2.5 py-1 rounded-lg mt-0.5">搭乘車種</span>
             <div>
-              <div class="font-bold text-ink">Osaka Metro 堺筋線 ➔ 轉乘 京阪電車（京阪本線特急）</div>
-              <div class="text-xs text-stone-600 mt-0.5">地鐵大人 ¥190 / 兒童 ¥100 ＋ 京阪特急大人 ¥490 / 兒童 ¥250（特急免加購特急券，直停祇園四條站）</div>
+              <div class="font-bold text-ink">Osaka Metro 堺筋線 ➔ 轉乘 京阪電車（特急 ➔ 準急／普通）</div>
+              <div class="text-xs text-rose-600 font-bold mt-0.5">⚠️ 提醒：京阪「特急」不停伏見稻荷站，務必在「丹波橋站」同月台轉乘「準急」或「普通」列車！</div>
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="bg-blue-50/60 border border-blue-100 rounded-2xl p-3.5">
               <div class="text-xs font-black text-indigoJp">🚉 上車站 & 轉乘口編號</div>
-              <div class="font-bold text-base text-ink mt-1">惠美須町站 (K18) ➔ 北濱站轉京阪</div>
+              <div class="font-bold text-base text-ink mt-1">惠美須町站 (K18) ➔ 北濱站 ➔ 丹波橋站</div>
               <p class="text-xs text-stone-700 mt-1 leading-relaxed">
-                1. 步行 3～5 分鐘至<strong>惠美須町站 (K18)</strong> 由 <strong>5號出口</strong> 進站（<span class="bg-amber-200/80 px-1 rounded font-bold">🛗 嬰兒車走有電梯的 3號出口 或 1B出口</span>），搭往天神橋筋六丁目方向至<strong>北濱站 (K14)</strong>（8分鐘）。<br>
-                2. 走<strong>「京阪電車聯絡口（北改札側）」</strong>地下連通道步行 3 分鐘（<span class="bg-amber-200/80 px-1 rounded font-bold">🛗 有電梯</span>）進<strong>京阪北濱站</strong>，搭「京阪本線特急」（往出町柳方向，約 50 分鐘）。
+                1. 步行 3～5 分鐘至<strong>惠美須町站 (K18)</strong>（<strong>5號出口</strong>進站，推車請走 <span class="bg-amber-200/80 px-1 rounded font-bold">🛗 3號出口 或 1B出口電梯</span>）➔ <strong>北濱站 (K14)</strong> 下車（8分鐘）。<br>
+                2. 走<strong>「京阪電車聯絡口（北改札側）」</strong>地下連通道（<span class="bg-amber-200/80 px-1 rounded font-bold">🛗 有電梯</span>，步行 3 分鐘）進京阪北濱站 ➔ 先搭<strong>「特急」</strong>至<strong>丹波橋站</strong>（約 40 分鐘），同月台對面轉乘<strong>「準急」或「普通」</strong>列車（約 8 分鐘）。
+              </p>
+            </div>
+
+            <div class="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-3.5">
+              <div class="text-xs font-black text-emerald-800 flex items-center justify-between">
+                <span>🏁 下車站 & 出站口編號</span>
+                <a href="https://www.google.com/maps/search/?api=1&query=Fushimi-Inari+Station+Kyoto" target="_blank" rel="noopener noreferrer" class="text-xs text-emerald-700 underline">車站地圖 ➔</a>
+              </div>
+              <div class="font-bold text-base text-ink mt-1">伏見稻荷站（伏見稲荷駅）</div>
+              <p class="text-xs text-stone-700 mt-1 leading-relaxed">
+                出 <span class="bg-emerald-600 text-white font-bold px-1.5 py-0.5 rounded">♿ 東改札口（設有斜坡無障礙通道）</span> 往右（東）直走約 5 分鐘即達大社入口。
+              </p>
+            </div>
+          </div>
+
+          <div class="bg-amber-50/80 rounded-xl px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span class="text-stone-700">單程票價：大人 <strong>¥670</strong>（地鐵¥190+京阪¥480）/ 兒童 <strong>¥340</strong>（地鐵¥100+京阪¥240）</span>
+            <span class="fare-breakdown font-bold text-indigoJp">計算明細載入中...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW Stop 1: Fushimi Inari Taisha -->
+      <div class="rounded-3xl border-2 border-torii/50 bg-gradient-to-br from-[#FFF6F4] via-white to-[#FFFBEB] p-5 shadow-sm space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="bg-torii text-white text-xs font-black px-2.5 py-1 rounded-lg">⛩️ 第 1 站【新增】</span>
+            <h3 class="font-black text-lg sm:text-xl text-ink">伏見稻荷大社（千本鳥居親子輕鬆版）</h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full">⏱ 建議停留 60～75 分鐘</span>
+            <a href="https://www.google.com/maps/search/?api=1&query=Fushimi+Inari+Taisha+Kyoto" target="_blank" rel="noopener noreferrer"
+               class="text-xs font-bold bg-indigoJp text-white px-3 py-1.5 rounded-xl hover:bg-torii transition shadow-sm">大社地圖 ➔</a>
+          </div>
+        </div>
+        <p class="text-xs sm:text-sm text-stone-700 leading-relaxed">
+          帶小朋友走到最經典的<strong>「千本鳥居」</strong>與<strong>「奧社奉拜所」</strong>拍照、看可愛的狐狸繪馬即可原路折返（單程約 20 分鐘平緩階梯，<strong>不爬完整座稻荷山</strong>，保留體力給下午逛街，輕鬆無負擔！）。
+        </p>
+      </div>
+
+      <!-- Transit 3-2: Fushimi Inari -> Gion-Shijo -->
+      <div class="transit-card bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden" data-day="day3" data-adult="240" data-child="120">
+        <div class="bg-stone-50 px-5 py-3.5 border-b border-stone-200/80 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-7 h-7 rounded-full bg-emerald-700 text-white text-xs font-black flex items-center justify-center">2</span>
+            <h3 class="font-black text-base sm:text-lg text-indigoJp">伏見稻荷大社 ➔ 祇園四條站（前往午餐與祇園散步）</h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold bg-blue-100 text-indigoJp px-2.5 py-1 rounded-lg">⏱ 搭車約 10 分鐘</span>
+            <span class="fare-badge text-xs font-black bg-torii text-white px-3 py-1 rounded-lg shadow-sm">本段7人小計：¥0</span>
+          </div>
+        </div>
+        <div class="p-5 space-y-4 text-sm">
+          <div class="flex items-start gap-3">
+            <span class="shrink-0 bg-[#1D7F44] text-white text-xs font-bold px-2.5 py-1 rounded-lg mt-0.5">搭乘車種</span>
+            <div>
+              <div class="font-bold text-ink">京阪電車「準急」或「普通」列車（往出町柳方向）</div>
+              <div class="text-xs text-rose-600 font-bold mt-0.5">⚠️ 特急不停伏見稻荷站，請搭乘「準急」或「普通」列車</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-blue-50/60 border border-blue-100 rounded-2xl p-3.5">
+              <div class="text-xs font-black text-indigoJp">🚉 上車站 & 進站口編號</div>
+              <div class="font-bold text-base text-ink mt-1">伏見稻荷站（1 號月台）</div>
+              <p class="text-xs text-stone-700 mt-1 leading-relaxed">
+                由 <strong>「東改札口」</strong> 進站直接上 <strong>1 號月台</strong>（往出町柳方向）。
               </p>
             </div>
 
@@ -870,13 +946,13 @@
               </div>
               <div class="font-bold text-base text-ink mt-1">祇園四條站（祇園四条駅）</div>
               <p class="text-xs text-stone-700 mt-1 leading-relaxed">
-                從地下 1 樓中央改札口走 <span class="bg-emerald-600 text-white font-bold px-1.5 py-0.5 rounded">🛗 7號出口（有電梯）</span> 或 <strong>6號出口（有手扶梯）</strong> 出站即達四條通。
+                地下 1 樓中央改札口出站，走 <span class="bg-emerald-600 text-white font-bold px-1.5 py-0.5 rounded">🛗 7號出口（設有電梯）</span> 或 <strong>6號出口（有手扶梯）</strong> 出站即為四條通。
               </p>
             </div>
           </div>
 
           <div class="bg-amber-50/80 rounded-xl px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span class="text-stone-700">單程票價：大人 <strong>¥680</strong> / 兒童 <strong>¥350</strong></span>
+            <span class="text-stone-700">單程票價：大人 <strong>¥240</strong> / 兒童 <strong>¥120</strong></span>
             <span class="fare-breakdown font-bold text-indigoJp">計算明細載入中...</span>
           </div>
         </div>
@@ -889,28 +965,28 @@
           <a href="https://www.google.com/maps/search/?api=1&query=Ramen+Miyako+Gion+Main+Shop" target="_blank" rel="noopener noreferrer"
              class="text-xs font-bold text-indigoJp hover:text-torii underline">開啟 Google Maps ➔</a>
         </div>
-        <h4 class="font-black text-lg text-ink">Ramen Miyako Gion Main Shop（祇園拉麵都）</h4>
+        <h4 class="font-black text-lg text-ink">祇園拉麵都（Ramen Miyako Gion Main Shop）</h4>
         <p class="text-xs sm:text-sm text-stone-600 mt-1.5 leading-relaxed">
-          濃厚雞白湯拉麵溫潤順口不死鹹，搭配酥脆煎餃與炒飯，小朋友接受度極高，吃飽後剛好 14:00 開始下午漫步行程！
+          濃厚雞白湯拉麵溫潤順口不死鹹，搭配酥脆煎餃與炒飯，小朋友接受度極高，吃飽後剛好開始下午平地漫步行程！
         </p>
       </div>
 
-      <!-- Afternoon East-to-West 6 Stops Walking Route -->
+      <!-- Afternoon East-to-West 6 Stops Walking Route (Stops 2 to 7) -->
       <div class="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden">
         <div class="bg-indigoJp text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <span class="text-lg">🗺️</span>
-            <h3 class="font-black text-base sm:text-lg">下午「東 ➔ 西」順路散步路線（6大景點・全程步行約 2.5～3 公里）</h3>
+            <h3 class="font-black text-base sm:text-lg">下午「由東向西」平地悠閒散步路線（第 2～7 站・全程步行約 2.5～3 公里）</h3>
           </div>
-          <span class="text-xs bg-white/15 px-2.5 py-1 rounded-full font-bold text-amber-200">全程平路＆石板路</span>
+          <span class="text-xs bg-white/15 px-2.5 py-1 rounded-full font-bold text-amber-200">全程平路＆好走石板路</span>
         </div>
 
         <div class="p-5 space-y-3.5">
-          <!-- Stop 1 -->
+          <!-- Stop 2 -->
           <div class="rounded-2xl border border-stone-200 bg-stone-50/60 p-4 space-y-1.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <span class="bg-torii text-white text-xs font-black px-2.5 py-1 rounded-lg">第一站・約 14:00</span>
+                <span class="bg-torii text-white text-xs font-black px-2.5 py-1 rounded-lg">第 2 站・約 14:00</span>
                 <h4 class="font-black text-base sm:text-lg text-ink">八坂神社（祇園）</h4>
               </div>
               <div class="flex items-center gap-2">
@@ -920,15 +996,15 @@
               </div>
             </div>
             <p class="text-xs sm:text-sm text-stone-700 leading-relaxed">
-              參拜美麗神殿、拍壯觀的舞殿燈籠，時間充裕可順逛相連的<strong>圓山公園</strong>。
+              沿四條通往東走到底即見鮮紅「西樓門」，參拜神殿、看舞殿燈籠，時間充裕可順逛相連的<strong>圓山公園</strong>。
             </p>
           </div>
 
-          <!-- Stop 2 -->
+          <!-- Stop 3 -->
           <div class="rounded-2xl border border-stone-200 bg-stone-50/60 p-4 space-y-1.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <span class="bg-torii text-white text-xs font-black px-2.5 py-1 rounded-lg">第二站</span>
+                <span class="bg-torii text-white text-xs font-black px-2.5 py-1 rounded-lg">第 3 站</span>
                 <h4 class="font-black text-base sm:text-lg text-ink">花見小路通</h4>
               </div>
               <div class="flex items-center gap-2">
@@ -938,15 +1014,15 @@
               </div>
             </div>
             <p class="text-xs sm:text-sm text-stone-700 leading-relaxed">
-              步行幾分鐘即達，欣賞傳統町家與石板路（注意部分私人小路禁止拍照）。接著往西跨過<strong>四條大橋</strong>、穿過鴨川進入河原町商圈。
+              從八坂神社往回走 3 分鐘轉入，傳統日式茶屋與石板路（注意部分私人小路禁止拍照）。接著往西越過<strong>四條大橋</strong>、穿過鴨川進入河原町商圈。
             </p>
           </div>
 
-          <!-- Stop 3 -->
+          <!-- Stop 4 -->
           <div class="rounded-2xl border-2 border-amber-300 bg-amber-50/60 p-4 space-y-1.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <span class="bg-goldJp text-white text-xs font-black px-2.5 py-1 rounded-lg">第三站・約 16:00 抵達</span>
+                <span class="bg-goldJp text-white text-xs font-black px-2.5 py-1 rounded-lg">第 4 站・建議 15:30–16:00 前抵達</span>
                 <h4 class="font-black text-base sm:text-lg text-ink">錦市場（京都的廚房）</h4>
               </div>
               <div class="flex items-center gap-2">
@@ -956,34 +1032,34 @@
               </div>
             </div>
             <p class="text-xs sm:text-sm text-stone-700 leading-relaxed">
-              邊走邊吃玉子燒、海鮮串燒與各式在地小吃。<br>
-              <span class="text-rose-700 font-bold">⚠️ 特別提醒：店家多在 17:00–18:00 打烊，務必於 16:00 左右抵達！</span>
+              邊吃玉子燒、海鮮串燒、豆乳甜甜圈等在地小吃。<br>
+              <span class="text-rose-700 font-bold">⚠️ 特別提醒：店家多於 17:00–18:00 打烊，建議 15:30–16:00 前抵達！</span>
             </p>
           </div>
 
-          <!-- Stop 4 -->
+          <!-- Stop 5 -->
           <div class="rounded-2xl border border-stone-200 bg-stone-50/60 p-4 space-y-1.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <span class="bg-torii text-white text-xs font-black px-2.5 py-1 rounded-lg">第四站</span>
+                <span class="bg-torii text-white text-xs font-black px-2.5 py-1 rounded-lg">第 5 站</span>
                 <h4 class="font-black text-base sm:text-lg text-ink">錦天滿宮</h4>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full">⏱ 停留約 20 分鐘</span>
+                <span class="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full">⏱ 停留 20 分鐘</span>
                 <a href="https://www.google.com/maps/search/?api=1&query=Nishiki+Tenmangu+Shrine+Kyoto" target="_blank" rel="noopener noreferrer"
                    class="text-xs font-bold bg-white border border-stone-300 px-2.5 py-1 rounded-lg text-indigoJp hover:border-torii transition">地圖 ➔</a>
               </div>
             </div>
             <p class="text-xs sm:text-sm text-stone-700 leading-relaxed">
-              位於錦市場東端盡頭與新京極交會處，帶小朋友摸摸<strong>「智慧之牛」</strong>祈福、欣賞傍晚點燈的壯觀燈籠鳥居。
+              位於錦市場東端盡頭與新京極交會處，掛滿燈籠的鳥居與摸<strong>「智慧之牛」</strong>替孩子祈福。
             </p>
           </div>
 
-          <!-- Stop 5 & 6 -->
+          <!-- Stop 6 & 7 -->
           <div class="rounded-2xl border border-stone-200 bg-stone-50/60 p-4 space-y-1.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <span class="bg-indigoJp text-white text-xs font-black px-2.5 py-1 rounded-lg">第五、六站</span>
+                <span class="bg-indigoJp text-white text-xs font-black px-2.5 py-1 rounded-lg">第 6、7 站</span>
                 <h4 class="font-black text-base sm:text-lg text-ink">新京極商店街 ＆ 寺町京極商店街</h4>
               </div>
               <div class="flex items-center gap-2">
@@ -993,7 +1069,7 @@
               </div>
             </div>
             <p class="text-xs sm:text-sm text-stone-700 leading-relaxed">
-              兩條平行有頂遮雨商店街，藥妝、扭蛋、伴手禮與老字號茶鋪林立，雨天或推車都超好逛！
+              緊鄰平行的有頂遮雨商店街，扭蛋店、藥妝、伴手禮與文青老舖林立，雨天或推車都超好逛！
             </p>
           </div>
         </div>
@@ -1003,13 +1079,13 @@
       <div class="bg-white rounded-3xl p-5 shadow-sm border border-stone-200 flex flex-col justify-between">
         <div>
           <div class="flex items-center justify-between gap-2 mb-2">
-            <span class="bg-amber-100 text-amber-900 text-xs font-black px-2.5 py-1 rounded-lg">🍣 Day 3 晚餐推薦（河原町／寺町京極商圈）</span>
+            <span class="bg-amber-100 text-amber-900 text-xs font-black px-2.5 py-1 rounded-lg">🍣 Day 3 晚餐推薦（河原町／三條寺町商圈旁）</span>
             <a href="https://www.google.com/maps/search/?api=1&query=Sushi+no+Musashi+Sanjo+Honten+Kyoto" target="_blank" rel="noopener noreferrer"
                class="text-xs font-bold text-indigoJp hover:text-torii underline">開啟 Google Maps ➔</a>
           </div>
           <h4 class="font-black text-lg text-ink">壽司的武藏 三條本店</h4>
           <p class="text-xs sm:text-sm text-stone-600 mt-1.5 leading-relaxed">
-            京都超高人氣平價迴轉壽司老店，師傅現場手握、轉盤拿了就開吃，7 個人聚餐不用久等。
+            京都高人氣平價迴轉壽司老店，師傅現場手握、拿了就吃，7 個人不用久等。
           </p>
         </div>
         <div class="mt-3 pt-2.5 border-t border-stone-100 text-xs text-stone-500 flex items-center justify-between">
@@ -1018,11 +1094,11 @@
         </div>
       </div>
 
-      <!-- Transit 3-2 -->
+      <!-- Transit 3-3: Kawaramachi -> Hotel -->
       <div class="transit-card bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden" data-day="day3" data-adult="650" data-child="330">
         <div class="bg-stone-50 px-5 py-3.5 border-b border-stone-200/80 flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-full bg-emerald-700 text-white text-xs font-black flex items-center justify-center">2</span>
+            <span class="w-7 h-7 rounded-full bg-emerald-700 text-white text-xs font-black flex items-center justify-center">3</span>
             <h3 class="font-black text-base sm:text-lg text-indigoJp">京都河原町 ➔ 谷町君酒店</h3>
           </div>
           <div class="flex items-center gap-2">
@@ -1321,14 +1397,15 @@
   <!-- ==================== INTERACTIVE SCRIPT ==================== -->
   <script>
     (function () {
-      const STORAGE_KEY_STATE = 'osaka_2026_family_state_v2';
-      const STORAGE_KEY_CHECKLIST = 'osaka_2026_family_checklist_v2';
+      const STORAGE_KEY_STATE = 'osaka_2026_family_state_v3';
+      const STORAGE_KEY_CHECKLIST = 'osaka_2026_family_checklist_v3';
 
-      const ADULTS = 4;
-      const TOTAL_KIDS = 3;
+      const JPY_TO_TWD = 0.215;
 
       const defaultState = {
-        elementaryCount: 1, // 6-11 yrs (half fare), default 1
+        adultCount: 4,      // default 4 adults (1-8)
+        elementaryCount: 1, // 6-11 yrs (half fare), default 1 (0-3)
+        preschoolCount: 2,  // 1-5 yrs (free within quota), default 2 (0-3)
         day5Mode: 'rapit',  // 'rapit' (1450/750) or 'express' (970/490)
         activeTab: 'overview',
         showAll: false
@@ -1387,22 +1464,46 @@
 
       // -------------------- Fare Calculation & UI Sync --------------------
       function updateFares() {
-        const elemKids = Math.min(TOTAL_KIDS, Math.max(0, state.elementaryCount));
-        const preschoolKids = TOTAL_KIDS - elemKids;
+        const adults = Math.min(8, Math.max(1, state.adultCount));
+        const elemKids = Math.min(3, Math.max(0, state.elementaryCount));
+        const preschoolKids = Math.min(3, Math.max(0, state.preschoolCount));
+        const totalPeople = adults + elemKids + preschoolKids;
+
+        state.adultCount = adults;
         state.elementaryCount = elemKids;
+        state.preschoolCount = preschoolKids;
+
+        // Free toddler quota: 1 paying adult can bring up to 2 preschool toddlers free
+        const maxFreeToddlers = adults * 2;
+        const remainingFreeSlots = Math.max(0, maxFreeToddlers - preschoolKids);
+        const extraPaidToddlers = Math.max(0, preschoolKids - maxFreeToddlers);
+        const totalChildTickets = elemKids + extraPaidToddlers;
 
         // Update age counters
+        document.getElementById('adult-count-display').textContent = adults;
         document.getElementById('elem-count-display').textContent = elemKids;
         document.getElementById('preschool-count-display').textContent = preschoolKids;
 
-        // Update headcount rule banner
+        // Update free quota badge & headcount rule banner
+        const freeBadge = document.getElementById('free-quota-badge');
         const banner = document.getElementById('headcount-status-banner');
-        banner.innerHTML = `<span>✅ 目前人數核對：<strong>4位大人</strong> + <strong>${elemKids}位小學生</strong> + <strong>${preschoolKids}位幼兒</strong> ＝ 共 <strong>7人</strong>（符合關西鐵道 1 大免費帶 2 幼兒規定，4大最多可免費帶 8 幼兒）</span>`;
+        if (extraPaidToddlers === 0) {
+          freeBadge.textContent = `尚餘 ${remainingFreeSlots} 免費名額`;
+          freeBadge.className = 'text-[11px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold';
+          banner.className = 'bg-emerald-100/80 border border-emerald-300 text-emerald-900 rounded-xl px-3 py-1.5 text-xs font-bold flex flex-wrap items-center justify-between gap-2';
+          banner.innerHTML = `<span>✅ 目前人數核對：<strong>${adults}位大人</strong> + <strong>${elemKids}位小學生</strong> + <strong>${preschoolKids}位幼兒</strong> ＝ 共 <strong>${totalPeople}人</strong>（${adults}大最多可免費帶 ${maxFreeToddlers} 位幼兒，尚餘 <strong>${remainingFreeSlots} 個免費名額</strong>）</span>`;
+        } else {
+          freeBadge.textContent = `超出 ${extraPaidToddlers} 位需購兒童票`;
+          freeBadge.className = 'text-[11px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold';
+          banner.className = 'bg-rose-100/80 border border-rose-300 text-rose-900 rounded-xl px-3 py-1.5 text-xs font-bold flex flex-wrap items-center justify-between gap-2';
+          banner.innerHTML = `<span>⚠️ 目前共 <strong>${totalPeople}人</strong>：${adults}位大人最多可免費帶 ${maxFreeToddlers} 位幼兒，超出 ${extraPaidToddlers} 位幼兒需計入兒童半價票</span>`;
+        }
 
         // Update quick preset pills
         document.querySelectorAll('.preset-btn').forEach(btn => {
-          const presetVal = parseInt(btn.getAttribute('data-preset'), 10);
-          if (presetVal === elemKids) {
+          const pElem = parseInt(btn.getAttribute('data-preset-elem'), 10);
+          const pPre = parseInt(btn.getAttribute('data-preset-pre'), 10);
+          if (pElem === elemKids && pPre === preschoolKids) {
             btn.className = 'preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-indigoJp bg-indigoJp text-white transition';
           } else {
             btn.className = 'preset-btn text-xs font-bold px-3 py-1.5 rounded-full border border-stone-300 bg-white text-stone-700 hover:border-indigoJp transition';
@@ -1440,21 +1541,22 @@
           const adultFare = parseInt(card.getAttribute('data-adult'), 10) || 0;
           const childFare = parseInt(card.getAttribute('data-child'), 10) || 0;
 
-          const cardTotal = (adultFare * ADULTS) + (childFare * elemKids);
+          const cardTotal = (adultFare * adults) + (childFare * totalChildTickets);
           if (Object.prototype.hasOwnProperty.call(dayTotals, day)) {
             dayTotals[day] += cardTotal;
           }
 
           const badge = card.querySelector('.fare-badge');
           if (badge) {
-            badge.textContent = `本段7人小計：¥${formatNumber(cardTotal)}`;
+            badge.textContent = `本段${totalPeople}人小計：¥${formatNumber(cardTotal)}`;
           }
 
           const breakdown = card.querySelector('.fare-breakdown');
           if (breakdown) {
-            const childStr = elemKids > 0 ? ` + 兒童¥${childFare}×${elemKids}` : '';
-            const freeStr = preschoolKids > 0 ? `（${preschoolKids}幼兒免費）` : '';
-            breakdown.textContent = `7人計算：大人¥${adultFare}×4${childStr}${freeStr} = ¥${formatNumber(cardTotal)}`;
+            const childStr = totalChildTickets > 0 ? ` + 兒童¥${childFare}×${totalChildTickets}` : '';
+            const freeToddlerCount = preschoolKids - extraPaidToddlers;
+            const freeStr = freeToddlerCount > 0 ? `（${freeToddlerCount}幼兒免費）` : '';
+            breakdown.textContent = `${totalPeople}人計算：大人¥${adultFare}×${adults}${childStr}${freeStr} = ¥${formatNumber(cardTotal)}`;
           }
         });
 
@@ -1469,11 +1571,25 @@
           });
         });
 
-        const avgPerPerson = Math.round(grandTotal / (ADULTS + TOTAL_KIDS));
+        document.querySelectorAll('.day-total-label').forEach(el => {
+          el.textContent = `本日 ${totalPeople} 人電車總計`;
+        });
+
+        const avgPerPerson = Math.round(grandTotal / totalPeople);
+        const grandTotalTwd = Math.round(grandTotal * JPY_TO_TWD);
+        const avgPerPersonTwd = Math.round(avgPerPerson * JPY_TO_TWD);
+
+        document.getElementById('grand-total-label').textContent = `5天交通總預算（${totalPeople}人合計）`;
         document.getElementById('grand-total-jpy').textContent = formatNumber(grandTotal);
+        document.getElementById('grand-total-twd').textContent = formatNumber(grandTotalTwd);
+
+        document.getElementById('avg-per-person-label').textContent = `平均每人交通費（÷${totalPeople}人）`;
         document.getElementById('avg-per-person-jpy').textContent = formatNumber(avgPerPerson);
+        document.getElementById('avg-per-person-twd').textContent = formatNumber(avgPerPersonTwd);
+
+        const freeToddlerCount = preschoolKids - extraPaidToddlers;
         document.getElementById('grand-total-summary').textContent =
-          `大人 4 位 + 兒童 ${elemKids} 位（${preschoolKids} 幼兒免費）`;
+          `大人 ${adults} 位 + 兒童票 ${totalChildTickets} 張（${freeToddlerCount} 幼兒免費）`;
       }
 
       // -------------------- Tab & View Switching --------------------
@@ -1569,6 +1685,22 @@
       }
 
       // -------------------- Event Listeners --------------------
+      document.getElementById('btn-adult-minus').addEventListener('click', () => {
+        if (state.adultCount > 1) {
+          state.adultCount--;
+          saveState();
+          updateFares();
+        }
+      });
+
+      document.getElementById('btn-adult-plus').addEventListener('click', () => {
+        if (state.adultCount < 8) {
+          state.adultCount++;
+          saveState();
+          updateFares();
+        }
+      });
+
       document.getElementById('btn-elem-minus').addEventListener('click', () => {
         if (state.elementaryCount > 0) {
           state.elementaryCount--;
@@ -1578,7 +1710,7 @@
       });
 
       document.getElementById('btn-elem-plus').addEventListener('click', () => {
-        if (state.elementaryCount < TOTAL_KIDS) {
+        if (state.elementaryCount < 3) {
           state.elementaryCount++;
           saveState();
           updateFares();
@@ -1586,18 +1718,16 @@
       });
 
       document.getElementById('btn-pre-minus').addEventListener('click', () => {
-        const currentPreschool = TOTAL_KIDS - state.elementaryCount;
-        if (currentPreschool > 0) {
-          state.elementaryCount++;
+        if (state.preschoolCount > 0) {
+          state.preschoolCount--;
           saveState();
           updateFares();
         }
       });
 
       document.getElementById('btn-pre-plus').addEventListener('click', () => {
-        const currentPreschool = TOTAL_KIDS - state.elementaryCount;
-        if (currentPreschool < TOTAL_KIDS) {
-          state.elementaryCount--;
+        if (state.preschoolCount < 3) {
+          state.preschoolCount++;
           saveState();
           updateFares();
         }
@@ -1605,7 +1735,8 @@
 
       document.querySelectorAll('.preset-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          state.elementaryCount = parseInt(btn.getAttribute('data-preset'), 10);
+          state.elementaryCount = parseInt(btn.getAttribute('data-preset-elem'), 10);
+          state.preschoolCount = parseInt(btn.getAttribute('data-preset-pre'), 10);
           saveState();
           updateFares();
         });
